@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LI QYI - 简历</title>
+    <style>
+      @page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+      body {
+        font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+        color: #111;
+        line-height: 1.35;
+        font-size: 11pt;
+      }
+      .name { font-size: 22pt; font-weight: 700; margin: 0 0 4px 0; }
+      .meta { margin: 0 0 10px 0; color: #333; }
+      .contact { margin: 0 0 14px 0; color: #333; font-size: 10pt; }
+      h2 {
+        font-size: 12pt;
+        margin: 14px 0 6px 0;
+        padding: 0 0 4px 0;
+        border-bottom: 1px solid #ddd;
+      }
+      .role { font-weight: 700; margin: 8px 0 4px 0; }
+      ul { margin: 6px 0 0 18px; padding: 0; }
+      li { margin: 2px 0; }
+      .note { color: #444; font-size: 10pt; margin-top: 10px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    </style>
+  </head>
+  <body>
+    <div class="name">LI QYI</div>
+    <p class="meta">22岁｜意向：OpenTrain AI 兼职（运营 / 内容 / 数据标注 / 质检）</p>
+    <p class="contact">联系方式：电话（待补）｜邮箱（待补）｜所在地（待补）｜作品/链接（可选：GitHub / Notion / 作品集）</p>
+
+    <h2>个人亮点</h2>
+    <ul>
+      <li>微博热点运营：从“热榜标题”升级到“词条页采样 → 情绪分歧 → 可发文案”的工作流，强调事实核查与风险分级。</li>
+      <li>数据化选题：维护 <span class="mono">news_history.csv</span>；用复现频率 + 热度对数 + 风险惩罚计算优先级，输出 S/A/B 等级。</li>
+      <li>工具化提效：用 PowerShell/JS 做采样导入、数据清洗、报告生成；将日常运营沉淀成可复用 SOP 文档。</li>
+    </ul>
+
+    <h2>工作/项目经历（节选）</h2>
+    <div class="role">微博账号“今日有话直说”｜内容运营/数据化选题（个人项目）  2026.05–至今</div>
+    <ul>
+      <li>制定每日运营流程：热榜筛选 → 候选分级 → 词条页样本采集（高赞/高评/高转发/热门评论）→ 草稿生成 → 发布复盘。</li>
+      <li>沉淀风险控制框架：以“已知事实/待确认信息/理性观察/影响分析/开放问题”结构表达，降低争议话题的违规与误伤风险。</li>
+      <li>建立数据底座：历史热点去重与复现统计（1/3/7/15/30/90/180/365天），支持高复现议题持续追踪。</li>
+    </ul>
+
+    <div class="role">热点优先级算法与日报生成（PowerShell）  2026.05</div>
+    <ul>
+      <li>实现热度解析（含“万”单位）、对数热度得分、复现加权、风险扣分、等级映射；输出 <span class="mono">hot_priority_YYYY-MM-DD.csv</span>。</li>
+    </ul>
+
+    <div class="role">微博可见内容采样工具（Edge Console JS）  2026.05</div>
+    <ul>
+      <li>在已登录浏览器内导出可见文本与链接，避免触碰 Cookie/密码/Token；配套导入脚本将样本结构化落库。</li>
+    </ul>
+
+    <h2>技能</h2>
+    <ul>
+      <li>工具：PowerShell、JavaScript、Excel/CSV、基础数据分析与文本清洗</li>
+      <li>能力：内容策划与写作、舆情观察、事实核查、评论区互动策略</li>
+      <li>适配岗位：AI 数据标注、内容质检、信息整理、热点研究、运营支持</li>
+    </ul>
+
+    <h2>备注</h2>
+    <p class="note">本简历基于你当前项目仓库内容整理；未编造虚构雇主/学历/资质，仅对表述做了职业化与成果化。把“联系方式/所在地/教育背景”补齐后即可投递。</p>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LI QYI - Resume</title>
+    <style>
+      @page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+      body {
+        font-family: Calibri, Arial, sans-serif;
+        color: #111;
+        line-height: 1.35;
+        font-size: 11pt;
+      }
+      .name { font-size: 22pt; font-weight: 700; margin: 0 0 4px 0; }
+      .meta { margin: 0 0 10px 0; color: #333; }
+      .contact { margin: 0 0 14px 0; color: #333; font-size: 10pt; }
+      h2 {
+        font-size: 12pt;
+        margin: 14px 0 6px 0;
+        padding: 0 0 4px 0;
+        border-bottom: 1px solid #ddd;
+      }
+      .role { font-weight: 700; margin: 8px 0 4px 0; }
+      ul { margin: 6px 0 0 18px; padding: 0; }
+      li { margin: 2px 0; }
+      .note { color: #444; font-size: 10pt; margin-top: 10px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    </style>
+  </head>
+  <body>
+    <div class="name">LI QYI</div>
+    <p class="meta">Age 22 | Target: Part-time at OpenTrain AI (Operations / Content / Data Labeling / QA)</p>
+    <p class="contact">Contact: Phone (TBD) | Email (TBD) | Location (TBD) | Portfolio/Links (optional)</p>
+
+    <h2>Highlights</h2>
+    <ul>
+      <li>Weibo trend operations: upgraded from title-based posting to topic-page sampling, sentiment mapping, and publish-ready copy with fact-checking and risk grading.</li>
+      <li>Data-driven topic prioritization: maintained <span class="mono">news_history.csv</span>; built recurrence + heat + risk scoring to rank S/A candidates.</li>
+      <li>Workflow automation: PowerShell/JS for sample ingestion, cleaning, and reporting; standardized daily ops into reusable SOPs.</li>
+    </ul>
+
+    <h2>Experience & Projects (Selected)</h2>
+    <div class="role">Weibo account "Today, Speak Frankly" | Content Ops & Topic Intelligence (Personal Project)  May 2026 - Present</div>
+    <ul>
+      <li>Designed a daily loop: hotlist scan, candidate grading, topic-page sampling (top-liked/top-commented/top-reposted + hot comments), draft generation, and post-mortem review.</li>
+      <li>Applied a safe-structure writing framework (known facts / to-verify / rational observation / impact analysis / open questions) to reduce compliance risk on controversial topics.</li>
+      <li>Built a lightweight data layer with dedup and recurrence windows (1/3/7/15/30/90/180/365 days) to track high-recurrence storylines.</li>
+    </ul>
+
+    <div class="role">Hot Topic Priority Scoring & Daily Report (PowerShell)  May 2026</div>
+    <ul>
+      <li>Implemented hot-value parsing (including 10k-unit), log-based heat scoring, recurrence weighting, risk penalties, and level mapping; exported <span class="mono">hot_priority_YYYY-MM-DD.csv</span>.</li>
+    </ul>
+
+    <div class="role">Visible-Page Weibo Sampler (Edge Console JS)  May 2026</div>
+    <ul>
+      <li>Exported only visible DOM text and links from a logged-in browser session (no cookies/tokens); paired with an import script to structure samples into CSV.</li>
+    </ul>
+
+    <h2>Skills</h2>
+    <ul>
+      <li>Tools: PowerShell, JavaScript, Excel/CSV, basic text/data cleaning</li>
+      <li>Strengths: content planning and writing, sentiment observation, lightweight fact-checking, comment engagement strategy</li>
+      <li>Role fit: AI data labeling, content QA, information organization, trend research, operations support</li>
+    </ul>
+
+    <h2>Note</h2>
+    <p class="note">Compiled from your existing local project artifacts. I did not fabricate employers/education/certifications; wording is optimized for clarity and impact. Add education/contact details before applying.</p>
+  </body>
+</html>
