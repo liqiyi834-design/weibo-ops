@@ -12,6 +12,7 @@ output/
 
 # Browser/runtime scratch files
 tmp/
+pytest_tmp/
 .git-template-empty/
 .git-store/
 .git-store-template-empty/
@@ -24,6 +25,9 @@ Desktop.ini
 ~$*
 *.tmp
 *.log
+__pycache__/
+*.py[cod]
+.rag_index/
 
 # Token/config files if created later
 .env

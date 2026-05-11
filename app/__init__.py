@@ -1,0 +1,1 @@
+"""HotComment-AI application package."""

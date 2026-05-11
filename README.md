@@ -11,6 +11,74 @@
 
 当前建议路线：先保留现有人工运营流程，同时把 `04_人设与风格规则.md`、`06_草稿生成提示词.md`、`10_爆款博文写作公式.md`、`12_事实核查与风险分级.md` 等资料整理为后续 AI MVP 的核心输入。
 
+## HotComment-AI MVP 启动
+
+安装依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+配置真实模型 API：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+然后在 `.env` 中填写：
+
+```text
+OPENAI_API_KEY=你的API Key
+OPENAI_MODEL=gpt-4o-mini
+```
+
+如果使用 OpenAI-compatible 服务，可以额外填写：
+
+```text
+OPENAI_BASE_URL=https://你的兼容接口地址/v1
+OPENAI_MODEL=对应模型名
+```
+
+启动服务：
+
+```powershell
+python -m uvicorn app.main:app --reload
+```
+
+健康检查：
+
+```text
+GET http://127.0.0.1:8000/health
+```
+
+生成接口：
+
+```text
+POST http://127.0.0.1:8000/api/comment/generate
+```
+
+示例请求：
+
+```json
+{
+  "topic": "某品牌母亲节文案翻车",
+  "persona": "pr_critic",
+  "emotion_level": 7,
+  "use_rag": true,
+  "context_text": "这里粘贴已核实背景材料。"
+}
+```
+
+不配置 `OPENAI_API_KEY` 时，系统会自动使用 `MockLLMClient` 跑通链路，方便本地测试。
+
+重建本地 RAG 索引：
+
+```text
+POST http://127.0.0.1:8000/api/knowledge/rebuild
+```
+
+当前会索引 `app/knowledge/` 以及仓库中已沉淀的重点运营文档，包括人设规则、草稿提示词、爆款公式、事实核查规则和高互动样本分析。默认使用本地 hash embedding，不依赖外部 embedding API；如需使用 OpenAI-compatible embedding，将 `.env` 中的 `USE_OPENAI_EMBEDDINGS` 改为 `true`。
+
 ## 每日流程
 
 1. 打开微博热搜，记录 15-30 个候选热点到 `01_热搜追踪模板.md`。
