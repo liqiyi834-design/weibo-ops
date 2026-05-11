@@ -1,0 +1,13 @@
+category,source_account,public_url,visible_pattern,useful_takeaway
+platform,微博热搜,https://weibo.com/mbsearch,热搜创作激励/趋势报告/榜单机制,优先追带上升趋势的热搜词并尽早发布
+platform,微博搜索,https://weibo.com/wbsearch,功能公告/产品说明/用户教育,官方类内容要先讲新功能再讲使用场景
+tech,财经网科技,https://weibo.com/tigeeker,话题标签+时间+事实+来源,科技财经稿要高密度但必须加人话解释
+tech,快科技官方,https://www.weibo.com/mydrivers,快讯标题+核心事实+行业影响,适合做短快评和事实补充
+entertainment,新浪娱乐,https://weibo.com/entpaparazzi,双话题标签+具体场景+视频/图片,娱乐稿高互动来自可感细节和粉丝接话空间
+entertainment,娱乐有饭,https://www.weibo.com/funforfans/home,明星造型/名场面/轻情绪表达,描述要具体不要只会夸
+entertainment,娱乐星星眼,https://weibo.com/u/5710242575,多话题词+视频卡片+轻松语气,适合引导评论区补图补名场面
+society,热点新闻站,https://weibo.com/2201926884/,同城热点+视频+网友轻吐槽,社会轻热点适合用低门槛问题拉评论
+law,法职_庞九林律师,https://weibo.com/DCCda,专业身份+案例/法律解释,观点型账号要提供专业判断而不是单纯站队
+personal,雷军,https://www.weibo.com/leijun,第一人称/产品现场/企业家身份,人格信号强的账号更容易建立信任
+personal,姚晨,https://weibo.com/yaochen,生活化细节+工作现场+个人口吻,真人感来自具体细节而不是口号
+personal,小S,https://weibo.com/dees,情绪明确+短句+个人处境,短内容也能高互动关键在态度鲜明

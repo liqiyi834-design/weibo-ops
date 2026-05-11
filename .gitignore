@@ -1,0 +1,32 @@
+# Local secrets and private inboxes
+data/telegram_inbox.csv
+data/telegram_inbox_offset.txt
+data/telegram_watch.log
+
+# Raw captured account samples
+samples/inbox/
+samples/processed/*.json
+
+# Generated reports and temporary outputs
+output/
+
+# Browser/runtime scratch files
+tmp/
+.git-template-empty/
+.git-store/
+.git-store-template-empty/
+repo_store/
+repo_store_template_empty/
+
+# OS/editor noise
+Thumbs.db
+Desktop.ini
+~$*
+*.tmp
+*.log
+
+# Token/config files if created later
+.env
+*.secret
+*.token
+secrets/

@@ -1,0 +1,7 @@
+date,topic,source_level,source_name,source_url,claim_checked,used_in_post,backup_location,notes
+2026-05-08,微博热搜前30,B,微博热搜实时接口,https://v2.xxapi.cn/api/weibohot,热搜标题与热度,第一轮选题,,热搜会快速变化
+2026-05-08,以旧换新政策,A,中国政府网/商务部政策解读,https://www.gov.cn/zhengce/202404/content_6945072.htm,消费品以旧换新政策背景,02以旧换新,,用于政策背景
+2026-05-08,大规模设备更新和消费品以旧换新,A,工信部转载国务院行动方案,https://www.miit.gov.cn/xwdt/szyw/art/2024/art_a2452750705944c2ac56ea809ba7f2aa.html,行动方案方向,02以旧换新,,用于政策背景
+2026-05-08,HPV男性健康科普,A,Cleveland Clinic,https://my.clevelandclinic.org/health/diseases/11901-hpv-human-papilloma-virus,HPV常识与风险边界,03男生感染HPV,,健康内容仅作常识提醒
+2026-05-08,HPV男性症状与风险,A,Medical News Today,https://www.medicalnewstoday.com/articles/314567,男性HPV可能无症状/疣体/风险,03男生感染HPV,,健康内容需谨慎
+2026-05-08,仅退款争议背景,B,央视网转红星新闻,https://news.cctv.com/2024/07/13/ARTI8aN0SheKEkVWq2lnjv3O240713.shtml,仅退款机制争议与诚信原则,01榴莲仅退款,,不直接扩写未确认处罚细节
