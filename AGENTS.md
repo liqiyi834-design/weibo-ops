@@ -14,17 +14,21 @@
 
 ## 最新方案文档
 
-最新技术框架和实现路径以仓库内这份文档为准：
+最新技术框架和实现路径以仓库根目录这份用户总纲为准：
+
+```text
+微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md
+```
+
+这份文档是项目的最高优先级产品/技术总文档，用于指导 Codex、AI Agent 和开发者理解项目目标、边界、架构和实现路径。
+
+仓库内另有同步整理版：
 
 ```text
 docs/HotComment-AI技术方案.md
 ```
 
-这份文档来自用户更新的：
-
-```text
-微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md
-```
+如果两份文档内容出现冲突，以根目录 `微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md` 为准，再同步更新 `docs/HotComment-AI技术方案.md` 和 `AGENTS.md`。
 
 重点阅读章节：
 
@@ -41,7 +45,8 @@ docs/HotComment-AI技术方案.md
 
 ### 文档
 
-- 已把用户的完整技术方案整理进 `docs/HotComment-AI技术方案.md`。
+- 已将根目录 `微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md` 确立为项目总纲和最高优先级方案文档。
+- `docs/HotComment-AI技术方案.md` 作为同步整理版，用于保持 docs 目录内的技术方案索引连续。
 - 已更新 `docs/README.md`，说明项目已进入 MCP / 自动化方向。
 - README 已包含 FastAPI、RAG、DeepSeek 和 MCP 的基础启动说明。
 
@@ -245,17 +250,25 @@ python -m pytest tests -q -p no:cacheprovider
 
 ### 文档同步
 
-用户可能在仓库外层更新方案文档。若出现新版本，先查找：
+用户可能更新根目录项目总纲。若出现新版本，先查找：
 
 ```powershell
 Get-ChildItem -Path E:\work\lqy -Filter '*微博热点人格化锐评AI项目技术框架及实现路径*.md'
 ```
 
-再同步到：
+主文档应保留/更新为：
+
+```text
+微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md
+```
+
+再同步整理到：
 
 ```text
 docs/HotComment-AI技术方案.md
 ```
+
+同步后还要更新 `AGENTS.md` 的“当前已完成”“下一步优先级”和关键踩坑记录。若根目录总纲与 docs 整理版冲突，以根目录总纲为准。
 
 ## 下一步优先级
 
@@ -271,44 +284,28 @@ docs/HotComment-AI技术方案.md
 
 其中 `get_hot_topics` 已完成；`retrieve_knowledge` 已由 `search_knowledge` 基本覆盖，但名称可后续对齐文档。
 
-### P1：接入微博热搜 Provider
+### P1：实现“值得锐评选题”推荐
 
-参考项目：
-
-```text
-RusianHu/weibo_hotsearch_mcp
-```
-
-推荐吸收其微博移动版接口思路，不建议直接照搬整个 MCP 服务。
-
-待实现目录：
+用户新增目标：
 
 ```text
-app/hot_sources/
-  base.py
-  mock.py
-  weibo_mobile.py
+爬取微博热搜前 50
+-> AI 从事实性、争议度、表达空间、风险、账号匹配度、时效性等角度评价
+-> 推荐 3-5 个最值得锐评的选题
+-> 给出推荐理由、风险提示、建议角度
+-> 最终由人决定选题
 ```
 
-已实现接口：
+实现建议：
 
-```text
-GET /api/hot/weibo
-```
-
-已实现 MCP 工具：
-
-```text
-get_hot_topics
-```
-
-实现说明：
-
-- 已删除微博移动 API 和无 Cookie 网页 HTML Provider，因为当前环境下不稳定。
-- 当前热搜 fallback 链为：`WeiboCookieHotSearchProvider -> VisibleCaptureHotSearchProvider -> MockHotSearchProvider`。
-- Cookie 只允许通过本地 `.env` 的 `WEIBO_COOKIE` 传入，不提交、不写进代码。
-- `VisibleCaptureHotSearchProvider` 读取 `samples/inbox` 和 `samples/processed` 中由 `tools/weibo_visible_capture.js` 导出的 JSON，只解析可见文本，不碰 Cookie 或登录态。
-- 所有真实来源失败时 fallback 到 `MockHotSearchProvider`，避免自动化流程中断。
+- 新增 `app/services/topic_selection_service.py`。
+- 输入 `HotSearchItem` 列表，默认来自 `GET /api/hot/weibo?limit=50`。
+- 输出候选评分：`score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
+- 高风险政治、未成年人、隐私、司法、灾难等话题默认降权或只给谨慎角度。
+- 只做“推荐选题”，不自动生成发布内容，不自动发布。
+- 可增加 API：`POST /api/topics/select`。
+- 可增加 MCP 工具：`select_comment_topics`。
+- 测试应覆盖：50 条输入、3-5 条输出、风险降权、理由字段非空。
 
 ### P2：草稿箱
 
@@ -331,7 +328,54 @@ drafts/
 - `save_draft`
 - `list_drafts`
 
-### P3：自动化任务
+### P3：知识库自动学习与背景资料入库
+
+用户新增目标：
+
+```text
+选题确定后
+-> AI / Codex 智能体自动搜索相关背景信息、公开消息、来源链接
+-> 提取摘要、事实点、争议点、时间线、风险提示
+-> 保存进本地知识库
+-> 重建或增量更新 RAG
+-> 后续生成草稿时可检索查阅
+```
+
+实现说明：
+
+- 这项能力必须只采集公开信息，不读取私信、登录态隐私、付费墙或敏感账号信息。
+- 资料入库前要保存来源 URL、抓取时间、摘要、可信度、是否需要人工确认。
+- 未核实信息不得写成确定事实，应该标注“待核验”。
+- 推荐新增目录：`app/knowledge/inbox/` 或 `app/knowledge/topics/`。
+- 推荐新增服务：`app/services/research_service.py`、`app/services/knowledge_ingestion_service.py`。
+- 推荐新增 MCP 工具：`research_topic`、`ingest_topic_research`。
+- 推荐新增 API：`POST /api/research/topic`、`POST /api/knowledge/ingest`。
+- 入库后调用现有 `KnowledgeService.rebuild()` 或后续增量索引。
+- 自动搜索需要明确来源白名单/黑名单、请求频率和失败 fallback，避免把低质搬运内容污染 RAG。
+
+### P4：热搜 Provider 与热榜清洗
+
+当前微博热搜 Cookie 抓取已可用，已验证 `GET /api/hot/weibo?limit=50` 能返回 50 条。
+
+已实现接口：
+
+```text
+GET /api/hot/weibo
+```
+
+已实现 MCP 工具：
+
+```text
+get_hot_topics
+```
+
+后续清洗待办：
+
+- 修复 `hot_value` 偶尔混入分类词的问题，例如 `综艺 126022`。
+- 根据运营策略决定是否过滤置顶、政务、低评论空间话题。
+- 增加热度字段解析测试。
+
+### P5：自动化任务
 
 自动化任务只生成候选草稿，不自动发布。
 
@@ -344,7 +388,7 @@ drafts/
 
 后续可以结合 Codex automations 做定时任务。
 
-### P4：RAG 升级
+### P6：RAG 升级
 
 当前 RAG 是本地 hash embedding。后续可以考虑：
 
