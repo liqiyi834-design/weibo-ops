@@ -2,15 +2,27 @@
 
 ## 项目目标
 
-把现有微博运营资料升级为 HotComment-AI：一个支持热点输入、背景材料整理、本地知识库检索、人格化锐评生成、安全审查、MCP 工具调用和自动化草稿生产的中文内容生产系统。
+把现有微博运营资料升级为 HotComment-AI：一个面向少数自有/朋友账号的热点选题、背景材料整理、本地知识库检索、风格化锐评草稿生成、安全审查、MCP 工具调用和人工审核的中文内容工作台。
 
-项目定位不是“自动发微博机器人”，而是：
+项目定位不是“自动发微博机器人”，也不是矩阵号、刷量或批量互动系统，而是：
 
 ```text
-热点锐评草稿生成工具 + MCP 工具服务 + 自动化草稿任务 + 人工审核机制
+少数账号的人机协同内容运营工作台
++ 热点锐评草稿生成工具
++ MCP 工具服务
++ 候选池与草稿箱
++ 人工审核机制
 ```
 
-默认只生成可审核草稿，不自动发布、不自动评论、不批量互动、不绕过平台风控。
+默认只服务少数自有/朋友账号的人工运营流程。AI 负责提高选题、资料整理和草稿生产效率；人负责判断、审核、修改和发布。
+
+明确不做：
+
+- 自动发布微博。
+- 自动评论、自动转发、自动点赞。
+- 批量互动、刷量、养号矩阵。
+- 规避平台风控或限制。
+- 诱导网暴、搬运谣言或扩散未经核验的敏感信息。
 
 ## 最新方案文档
 
@@ -59,6 +71,9 @@ docs/HotComment-AI技术方案.md
 - `GET /api/hot/weibo`
 - `POST /api/comment/generate`
 - `GET /api/comment/personas`
+- `GET /api/comment/styles`
+- `GET /api/accounts`
+- `POST /api/topics/select`
 - `POST /api/knowledge/rebuild`
 - `POST /api/knowledge/search`
 
@@ -74,6 +89,48 @@ topic + context_text
 -> SafetyChecker
 -> GenerateCommentResponse
 ```
+
+### 选题推荐
+
+已实现热搜选题推荐与候选池第一版：
+
+- `app/services/topic_selection_service.py`
+- `app/services/topic_research_service.py`
+- `app/services/candidate_pool_service.py`
+- `POST /api/topics/select`
+- `POST /api/topic-candidates/pools`
+- `GET /api/topic-candidates/pools`
+- `GET /api/topic-candidates/pools/{pool_id}`
+- `PATCH /api/topic-candidates/pools/{pool_id}/items/{item_id}`
+- MCP 工具 `select_comment_topics`
+
+当前能力：
+
+- 可输入热搜前 50，输出 3-5 个值得人工审核的锐评选题。
+- 输出字段包括 `score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
+- 可选 `enrich_metrics=true` 对候选题做二次采样，补充 `read_count`、`discussion_count`、`sampled_posts_count`、`controversy_score` 并参与评分。
+- 可将选题推荐保存为候选池 JSON，默认目录为 `output/topic_candidates/`。
+- 候选项支持人工状态流转：`candidate`、`selected`、`skipped`、`researched`，并可记录人工备注 `operator_note`。
+- 已对政务公告、外交、司法、未成年人、灾难等高风险或低评论空间话题做降权。
+- 风险等级不参与评分，只作为单独提示；低评论空间/纯通稿类仍可因账号适配度低而降权。
+- 只做选题推荐，不自动生成发布内容，不自动发布。
+
+### 账号配置与表达风格
+
+已预留轻量多账号配置，不做完整登录/权限系统：
+
+- `accounts/today_direct.json`
+- `app/services/style_service.py`
+- `GET /api/accounts`
+- `GET /api/comment/styles`
+
+当前规则：
+
+- 项目内统一把 `rational_critic`、`ironic_observer`、`pr_critic`、`angry_netizen` 理解为“表达风格”，不是虚构人格。
+- 生成接口新增 `account_id` 和 `style`，旧字段 `persona` 暂时保留兼容。
+- 账号配置包含 `default_style`、`allowed_styles`、`blocked_styles_for_high_risk`、`preferred_topics`、`risk_policy`。
+- 高风险话题会禁用不合适的高情绪/嘲讽风格，自动切到 `rational_critic`。
+- 后续多账号管理应基于账号配置扩展，不要把账号差异硬编码进生成逻辑。
 
 ### 真实模型接入
 
@@ -139,6 +196,7 @@ mcp_server/tools.py
 当前 MCP 工具：
 
 - `get_hot_topics`
+- `select_comment_topics`
 - `generate_comment`
 - `rebuild_knowledge`
 - `search_knowledge`
@@ -167,10 +225,15 @@ weibo-ops-hotcomment
 
 ```text
 tests/test_api.py
+tests/test_hot_sources.py
 tests/test_pipeline.py
 tests/test_rag.py
 tests/test_safety_checker.py
 tests/test_mcp_tools.py
+tests/test_candidate_pool.py
+tests/test_topic_selection.py
+tests/test_topic_research.py
+tests/test_style_service.py
 ```
 
 已验证：
@@ -182,12 +245,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-9 passed
+28 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的 MCP 和文档更新。提交前必须确认：
+当前工作区包含尚未提交的选题推荐、二次采样、候选池、账号配置和风格选择开发改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -197,7 +260,7 @@ python -m pytest tests -q -p no:cacheprovider
 建议提交信息：
 
 ```text
-完善MCP工具服务与自动化方案文档
+实现热搜选题推荐、候选池与风格配置
 ```
 
 ## 重要经验与踩坑记录
@@ -284,7 +347,7 @@ docs/HotComment-AI技术方案.md
 
 其中 `get_hot_topics` 已完成；`retrieve_knowledge` 已由 `search_knowledge` 基本覆盖，但名称可后续对齐文档。
 
-### P1：实现“值得锐评选题”推荐
+### P1：完善“值得锐评选题”推荐
 
 用户新增目标：
 
@@ -296,16 +359,26 @@ docs/HotComment-AI技术方案.md
 -> 最终由人决定选题
 ```
 
-实现建议：
+已完成第一版：
 
 - 新增 `app/services/topic_selection_service.py`。
-- 输入 `HotSearchItem` 列表，默认来自 `GET /api/hot/weibo?limit=50`。
+- 新增 `app/services/topic_research_service.py`。
+- 新增 `app/services/candidate_pool_service.py`。
+- 输入 `HotTopic` / `HotSearchItem` 列表，默认可来自 `GET /api/hot/weibo?limit=50`。
 - 输出候选评分：`score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
-- 高风险政治、未成年人、隐私、司法、灾难等话题默认降权或只给谨慎角度。
-- 只做“推荐选题”，不自动生成发布内容，不自动发布。
-- 可增加 API：`POST /api/topics/select`。
-- 可增加 MCP 工具：`select_comment_topics`。
-- 测试应覆盖：50 条输入、3-5 条输出、风险降权、理由字段非空。
+- 新增 API：`POST /api/topics/select`。
+- 新增候选池 API：`POST /api/topic-candidates/pools`、`GET /api/topic-candidates/pools`、`GET /api/topic-candidates/pools/{pool_id}`、`PATCH /api/topic-candidates/pools/{pool_id}/items/{item_id}`。
+- 新增 MCP 工具：`select_comment_topics`。
+- 新增二次采样服务 `TopicResearchService`，可从公开微博搜索页解析阅读量、讨论量、采样内容数量和争议度。
+- 新增候选池服务 `CandidatePoolService`，可保存候选池并支持人工把候选项标记为 `selected`、`skipped`、`researched`。
+- 已测试 3-10 条输出、风险提示不影响评分、理由字段非空、二次采样指标参与评分、候选池保存和人工状态更新。
+
+后续优化：
+
+- 引入 LLM 二次评审，让推荐理由更像编辑判断而不是纯规则。
+- 加强分类词表，例如演唱会、游戏、汽车、消费电子等。
+- 校准微博搜索页 `read_count` / `discussion_count` 解析，避免页面混杂数字导致误读。
+- 支持人工选择某个候选后触发背景资料搜索与知识库入库。
 
 ### P2：草稿箱
 
@@ -327,6 +400,25 @@ drafts/
 
 - `save_draft`
 - `list_drafts`
+
+### P2A：多账号与表达风格配置
+
+已完成轻量预留：
+
+- 默认账号配置：`accounts/today_direct.json`
+- 风格服务：`app/services/style_service.py`
+- API：`GET /api/accounts`、`GET /api/comment/styles`
+- 生成接口支持 `account_id`、`style`，并兼容旧 `persona` 字段。
+- 高风险话题会根据账号配置自动禁用 `angry_netizen`、`ironic_observer` 等不合适风格。
+
+后续评级：P2A，重要但不阻塞当前选题/候选池闭环。
+
+后续优化：
+
+- 支持新增多个账号 JSON，例如公关观察、打工人嘴替等。
+- 候选池、草稿箱和知识库资料都应带 `account_id`。
+- 前端展示账号切换和风格选择。
+- 逐步把内部命名从 `persona` 迁移到 `style`，保留兼容期。
 
 ### P3：知识库自动学习与背景资料入库
 
@@ -408,7 +500,8 @@ get_hot_topics
 - MCP 只作为适配层，核心逻辑应复用 `app/services`。
 - 高风险话题必须降低情绪强度。
 - 所有生成结果默认进入草稿或返回待审核，不自动发布。
-- 不实现自动发布、自动评论、批量互动或绕过平台风控能力。
+- 多账号只用于少数自有/朋友账号的差异化配置，不用于矩阵号、养号或批量操控。
+- 不实现自动发布、自动评论、自动转发点赞、批量互动、刷量或绕过平台风控能力。
 
 ## AGENTS.md 维护原则
 
@@ -434,7 +527,7 @@ get_hot_topics
 - 运行、测试、重建 RAG、启动 MCP 的命令。
 - 已验证结果，例如 `9 passed`、真实 DeepSeek 调用已成功。
 - 关键经验，例如代理变量导致连接失败、PowerShell 中文乱码、pytest 权限问题。
-- 安全边界：不自动发布、不自动评论、不绕过平台限制。
+- 安全边界：少数账号人工运营；不自动发布、不自动评论、不自动转发点赞、不批量互动、不刷量、不绕过平台限制。
 
 ### 不应该写入的内容
 

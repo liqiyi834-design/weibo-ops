@@ -2,16 +2,20 @@ from __future__ import annotations
 
 from app.core.config import Settings, get_settings
 from app.llm.client import BaseLLMClient, build_llm_client
-from app.schemas.comment import GenerateCommentRequest
+from app.schemas.comment import GenerateCommentRequest, HotTopic
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
+from app.services.topic_research_service import TopicResearchService
+from app.services.topic_selection_service import TopicSelectionService
 
 
 def generate_comment_tool(
     topic: str,
     context_text: str = "",
-    persona: str = "rational_critic",
+    style: str | None = None,
+    persona: str | None = None,
+    account_id: str = "today_direct",
     emotion_level: int = 6,
     use_rag: bool = True,
     settings: Settings | None = None,
@@ -23,7 +27,9 @@ def generate_comment_tool(
     response = pipeline.generate(
         GenerateCommentRequest(
             topic=topic,
+            account_id=account_id,
             context_text=context_text,
+            style=style,
             persona=persona,
             emotion_level=emotion_level,
             use_rag=use_rag,
@@ -47,3 +53,42 @@ def get_hot_topics_tool(limit: int = 20, settings: Settings | None = None) -> di
     active_settings = settings or get_settings()
     response = HotSearchService(active_settings).get_weibo_hot_topics(limit=limit)
     return response.model_dump()
+
+
+def select_comment_topics_tool(
+    topics: list[dict] | None = None,
+    max_results: int = 5,
+    source_limit: int = 50,
+    enrich_metrics: bool = False,
+    research_limit: int = 10,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    if topics:
+        hot_topics = [HotTopic(**topic) for topic in topics]
+    else:
+        response = HotSearchService(active_settings).get_weibo_hot_topics(limit=source_limit)
+        hot_topics = [
+            HotTopic(
+                rank=item.rank,
+                keyword=item.keyword,
+                hot_value=item.hot_value,
+                url=item.url,
+                label=item.label,
+                source=item.source,
+                timestamp=item.timestamp,
+            )
+            for item in response.items
+        ]
+    if enrich_metrics:
+        research_service = TopicResearchService(active_settings)
+        for index, topic in enumerate(hot_topics):
+            if index >= research_limit:
+                break
+            metrics = research_service.research(topic.keyword)
+            topic.read_count = metrics.read_count
+            topic.discussion_count = metrics.discussion_count
+            topic.sampled_posts_count = metrics.sampled_posts_count
+            topic.controversy_score = metrics.controversy_score
+    result = TopicSelectionService().select(hot_topics, max_results=max_results)
+    return result.model_dump()

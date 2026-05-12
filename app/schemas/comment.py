@@ -8,7 +8,12 @@ class HotTopic(BaseModel):
     rank: int | None = None
     keyword: str
     hot_value: str | None = None
+    read_count: int | None = None
+    discussion_count: int | None = None
+    sampled_posts_count: int | None = None
+    controversy_score: float | None = None
     url: str | None = None
+    label: str | None = None
     source: str = "manual"
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -69,7 +74,10 @@ class SafetyResult(BaseModel):
 
 class GenerateCommentRequest(BaseModel):
     topic: str = Field(min_length=1)
-    persona: str = "rational_critic"
+    account_id: str = "today_direct"
+    style: str | None = None
+    # Backward-compatible alias for older callers. Prefer `style` in new code.
+    persona: str | None = None
     emotion_level: int = Field(default=6, ge=1, le=10)
     use_rag: bool = True
     context_text: str = ""
@@ -77,9 +85,109 @@ class GenerateCommentRequest(BaseModel):
 
 class GenerateCommentResponse(BaseModel):
     topic: str
+    account_id: str = "today_direct"
+    style: str = "rational_critic"
     fact_summary: FactSummary
     topic_classification: TopicClassification
     retrieved_knowledge: list[RetrievedKnowledge]
     opinion: OpinionDraft
     output: CommentOutput
     safety: SafetyResult
+
+
+class TopicSelectionRequest(BaseModel):
+    topics: list[HotTopic] = Field(default_factory=list)
+    max_results: int = Field(default=5, ge=3, le=10)
+    source_limit: int = Field(default=50, ge=1, le=50)
+    enrich_metrics: bool = False
+    research_limit: int = Field(default=10, ge=1, le=10)
+
+
+class SelectedTopic(BaseModel):
+    rank: int | None = None
+    keyword: str
+    score: float
+    category: str
+    risk_level: Literal["low", "medium", "high"] = "low"
+    reason: str
+    recommended_angle: str
+    avoid_points: list[str] = Field(default_factory=list)
+    hot_value: str | None = None
+    read_count: int | None = None
+    discussion_count: int | None = None
+    sampled_posts_count: int | None = None
+    controversy_score: float | None = None
+    label: str | None = None
+    url: str | None = None
+    source: str = "manual"
+
+
+class TopicResearchMetrics(BaseModel):
+    keyword: str
+    read_count: int | None = None
+    discussion_count: int | None = None
+    sampled_posts_count: int = 0
+    controversy_score: float | None = None
+    source_url: str | None = None
+    error: str | None = None
+
+
+class StyleInfo(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    best_for: list[str] = Field(default_factory=list)
+
+
+class AccountConfig(BaseModel):
+    id: str
+    name: str
+    positioning: str
+    default_style: str = "rational_critic"
+    allowed_styles: list[str] = Field(default_factory=lambda: ["rational_critic"])
+    blocked_styles_for_high_risk: list[str] = Field(default_factory=list)
+    preferred_topics: list[str] = Field(default_factory=list)
+    risk_policy: str = "高风险话题必须降温，不自动发布。"
+
+
+class TopicSelectionResponse(BaseModel):
+    source: str
+    evaluated_count: int
+    selected: list[SelectedTopic]
+    notes: list[str] = Field(default_factory=list)
+
+
+CandidateStatus = Literal["candidate", "selected", "skipped", "researched"]
+
+
+class CandidatePoolItem(SelectedTopic):
+    id: str
+    status: CandidateStatus = "candidate"
+    operator_note: str | None = None
+
+
+class CandidatePool(BaseModel):
+    id: str
+    title: str
+    source: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    items: list[CandidatePoolItem]
+    notes: list[str] = Field(default_factory=list)
+
+
+class CandidatePoolCreateRequest(TopicSelectionRequest):
+    title: str | None = None
+
+
+class CandidatePoolSummary(BaseModel):
+    id: str
+    title: str
+    source: str
+    created_at: datetime
+    item_count: int
+    selected_count: int = 0
+
+
+class CandidateStatusUpdateRequest(BaseModel):
+    status: CandidateStatus
+    operator_note: str | None = None

@@ -12,6 +12,7 @@ from app.services.opinion_generator import OpinionGenerator
 from app.services.persona_rewriter import PersonaRewriter
 from app.services.prompt_loader import PromptLoader
 from app.services.safety_checker import SafetyChecker
+from app.services.style_service import StyleService
 from app.services.topic_classifier import TopicClassifier
 
 
@@ -27,23 +28,33 @@ class GenerationPipeline:
         self.opinion_generator = OpinionGenerator(llm, prompts)
         self.persona_rewriter = PersonaRewriter(llm, prompts)
         self.safety_checker = SafetyChecker()
+        self.style_service = StyleService()
 
     def generate(self, request: GenerateCommentRequest) -> GenerateCommentResponse:
         fact_summary = self.fact_summarizer.summarize(request.topic, request.context_text)
         classification = self.topic_classifier.classify(request.topic, request.context_text, fact_summary)
+        requested_style = request.style or request.persona
+        style, style_notes = self.style_service.resolve_style(
+            account_id=request.account_id,
+            requested_style=requested_style,
+            classification=classification,
+        )
+        classification.risk_notes.extend(style_notes)
         retrieved = self._retrieve(request.topic + " " + request.context_text) if request.use_rag else []
         opinion = self.opinion_generator.generate(fact_summary, retrieved, classification)
         output = self.persona_rewriter.rewrite(
             fact_summary=fact_summary,
             opinion=opinion,
             classification=classification,
-            persona=request.persona or classification.recommended_persona,
+            persona=style,
             emotion_level=request.emotion_level,
         )
         safety = self.safety_checker.check(output, fact_summary, classification)
         final_output = safety.revised_output or output
         return GenerateCommentResponse(
             topic=request.topic,
+            account_id=request.account_id,
+            style=style,
             fact_summary=fact_summary,
             topic_classification=classification,
             retrieved_knowledge=retrieved,

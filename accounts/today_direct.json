@@ -1,0 +1,23 @@
+{
+  "id": "today_direct",
+  "name": "今日有话直说",
+  "positioning": "社会热点与公共话题锐评账号，强调事实稳、观点清楚、表达像真人。",
+  "default_style": "rational_critic",
+  "allowed_styles": [
+    "rational_critic",
+    "ironic_observer",
+    "pr_critic",
+    "angry_netizen"
+  ],
+  "blocked_styles_for_high_risk": [
+    "angry_netizen",
+    "ironic_observer"
+  ],
+  "preferred_topics": [
+    "social_issue",
+    "brand_pr",
+    "entertainment",
+    "gender_issue"
+  ],
+  "risk_policy": "高风险话题必须降温，不自动发布；司法、隐私、未成年人和政治敏感话题优先使用理性拆解风格。"
+}
