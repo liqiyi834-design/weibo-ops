@@ -4,6 +4,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import Any
 
+import httpx
 from openai import OpenAI
 
 from app.core.config import Settings
@@ -27,7 +28,7 @@ class OpenAICompatibleLLMClient(BaseLLMClient):
         self.client = OpenAI(
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
-            timeout=settings.request_timeout_seconds,
+            http_client=httpx.Client(timeout=settings.request_timeout_seconds, trust_env=False),
         )
 
     def generate_json(self, system_prompt: str, user_prompt: str) -> dict[str, Any]:

@@ -79,6 +79,73 @@ POST http://127.0.0.1:8000/api/knowledge/rebuild
 
 当前会索引 `app/knowledge/` 以及仓库中已沉淀的重点运营文档，包括人设规则、草稿提示词、爆款公式、事实核查规则和高互动样本分析。默认使用本地 hash embedding，不依赖外部 embedding API；如需使用 OpenAI-compatible embedding，将 `.env` 中的 `USE_OPENAI_EMBEDDINGS` 改为 `true`。
 
+搜索本地 RAG 知识库：
+
+```text
+POST http://127.0.0.1:8000/api/knowledge/search
+```
+
+示例请求：
+
+```json
+{
+  "query": "品牌文案翻车如何安全锐评",
+  "top_k": 5
+}
+```
+
+## MCP 工具服务
+
+本仓库也提供 MCP 工具服务，方便 Codex、Claude Desktop、Cursor 等 Agent 客户端直接调用核心能力。
+
+启动：
+
+```powershell
+python -m mcp_server.server
+```
+
+当前工具：
+
+- `get_hot_topics`：获取微博热搜，失败时 fallback 到 mock 热点
+- `generate_comment`：生成微博锐评草稿，返回事实摘要、RAG 检索、观点、人格化输出和安全审查
+- `rebuild_knowledge`：重建本地 RAG 索引
+- `search_knowledge`：搜索本地知识库
+
+MCP 服务内部复用 `app/services`，FastAPI 和 MCP 共用同一套生成、RAG 和安全审查逻辑。
+
+微博热搜接口：
+
+```text
+GET http://127.0.0.1:8000/api/hot/weibo?limit=20
+```
+
+当前热搜来源 fallback 链：
+
+```text
+WEIBO_COOKIE 登录态网页热搜
+-> Edge 可见页面采集 JSON
+-> mock 热点
+```
+
+微博移动 API 和无 Cookie 网页 HTML 方案不稳定，当前已不作为热搜来源。真实热搜优先使用本地 `.env` 中的 `WEIBO_COOKIE` 请求 `s.weibo.com/top/summary`；如果 Cookie 缺失或失效，会自动尝试 Edge 可见采集 JSON，再失败则返回 mock 热点。
+
+Cookie 配置只放本地 `.env`，不要提交：
+
+```text
+WEIBO_COOKIE=你的微博网页 Cookie
+```
+
+如果要用已登录 Edge 页面辅助采集：
+
+1. 用 Edge 打开微博热搜或话题页。
+2. 手动滚动，让要采集的内容出现在页面里。
+3. 打开开发者工具 Console。
+4. 粘贴运行 `tools\weibo_visible_capture.js`。
+5. 把下载的 JSON 放入 `samples\inbox\`。
+6. 再调用 `GET /api/hot/weibo?limit=20`。
+
+该方式只读取你当前页面可见文字，不读取 Cookie、密码、验证码、私信或浏览器历史。
+
 ## 每日流程
 
 1. 打开微博热搜，记录 15-30 个候选热点到 `01_热搜追踪模板.md`。

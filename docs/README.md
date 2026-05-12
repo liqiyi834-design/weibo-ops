@@ -1,10 +1,10 @@
 # 项目文档索引
 
-本目录用于承接 HotComment-AI 的产品与技术方案。现有仓库仍保留微博人工运营工作台的结构，不另建独立应用目录；后续代码、知识库和 Prompt 可以直接在仓库根目录下逐步演进。
+本目录用于承接 HotComment-AI 的产品与技术方案。现有仓库仍保留微博人工运营工作台的结构，不另建独立应用目录；后续代码、知识库、Prompt、MCP 工具和自动化任务可以直接在仓库根目录下逐步演进。
 
 ## 核心方案
 
-- `HotComment-AI技术方案.md`：完整技术框架与实现路径，包含系统架构、MVP 边界、模块职责、Prompt 设计、API 设计、数据模型、安全边界和 Codex 开发任务。
+- `HotComment-AI技术方案.md`：完整技术框架与实现路径，包含系统架构、MVP 边界、MCP 工具服务、自动化任务、草稿箱机制、模块职责、Prompt 设计、API 设计、数据模型、安全边界和 Codex 开发任务。
 
 ## 现有资料的复用方式
 
@@ -26,7 +26,8 @@
 1. 先按 `HotComment-AI技术方案.md` 中的“任务 1：先实现本地 MVP”跑通链路。
 2. 使用现有 Markdown 文件作为本地知识库，不先接真实微博爬虫。
 3. 先实现 `KeywordRetriever`、`MockLLMClient` 和规则版 `SafetyChecker`。
-4. MVP 稳定后，再接入热搜 Provider、Chroma RAG 和生命周期追踪。
+4. MVP 稳定后，接入 MCP 工具服务，把生成、RAG 检索、知识库重建封装为 Agent 可调用工具。
+5. 再接入热搜 Provider、草稿箱、自动化任务、Chroma RAG 和生命周期追踪。
 
 ## 边界提醒
 

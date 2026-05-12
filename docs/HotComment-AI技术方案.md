@@ -69,8 +69,8 @@
 
 ```text
 ┌────────────────────────────┐
-│        用户 / 定时任务       │
-│  输入话题 / 抓取热搜榜       │
+│ 用户 / 定时任务 / Codex Agent │
+│  输入话题 / 抓热搜 / 调工具    │
 └─────────────┬──────────────┘
               ↓
 ┌────────────────────────────┐
@@ -936,6 +936,970 @@ class HotTopicLifecycle(BaseModel):
 
 ---
 
+
+## 3B. Codex / MCP 插件化与自动化任务设计
+
+> 本节用于补充项目的 Agent 化方向。  
+> 结论：本项目适合做成 Codex / AI Agent 可调用的工具链，但不建议做成全自动发微博机器人。  
+> 推荐形态是：**热点锐评草稿生成工具 + MCP 工具服务 + 自动化草稿任务 + 人工审核机制**。
+
+---
+
+### 3B.1 为什么适合做成 Codex / Agent 工具
+
+本项目天然适合被 Codex、Claude Code、Cursor 或其他 AI Agent 调用，原因是它不是单次问答，而是一条可重复执行的工作流：
+
+```text
+获取热点
+↓
+收集背景
+↓
+事实摘要
+↓
+话题分类
+↓
+知识库检索
+↓
+观点生成
+↓
+人格化改写
+↓
+风险审查
+↓
+保存草稿
+```
+
+如果只做成普通网页，用户每次都需要手动点击、复制和重复输入。  
+如果做成 Agent 工具，则可以让 Codex 直接调用你的项目能力，例如：
+
+```text
+请获取当前微博热搜，筛选适合品牌公关锐评的话题，生成 5 条草稿，但不要发布。
+```
+
+Agent 调用工具后可以自动完成：
+
+```text
+1. 获取热搜。
+2. 过滤高风险话题。
+3. 找出适合评论的话题。
+4. 生成多个版本。
+5. 进行安全审查。
+6. 保存到草稿箱。
+7. 返回待审核列表。
+```
+
+因此，本项目不只是一个 Web 应用，也可以逐步演化为一个“热点内容生产 Agent 工具链”。
+
+---
+
+### 3B.2 不建议做成全自动微博机器人
+
+需要明确区分两种项目形态。
+
+#### 推荐形态
+
+```text
+自动抓热点
+自动分析
+自动生成草稿
+自动安全审查
+自动保存草稿
+人工审核发布
+```
+
+这是内容生产辅助工具。
+
+#### 不推荐形态
+
+```text
+自动抓热点
+自动锐评
+自动发布微博
+自动评论别人
+自动转发互动
+自动批量引导舆论
+```
+
+这是高风险自动化。
+
+不推荐全自动发布的原因：
+
+1. 微博热点信息经常不完整。
+2. 自动发布容易把猜测写成事实。
+3. 涉及真人、未成年人、灾难、刑事案件时风险很高。
+4. 自动评论和自动转发容易被视为平台滥用。
+5. 批量情绪化内容容易引发网暴或舆论操控问题。
+6. 项目会从“内容辅助”滑向“自动攻击工具”。
+
+因此，项目应强制遵守：
+
+```text
+默认只生成草稿。
+默认不自动发布。
+默认不自动评论。
+默认不绕过平台限制。
+最终发布必须由人确认。
+```
+
+---
+
+### 3B.3 推荐三层架构
+
+项目后期建议从单体 Web 工具升级为三层结构：
+
+```text
+第一层：业务后端
+HotComment-AI FastAPI 服务
+
+第二层：Agent 工具层
+MCP Server / Codex Tool Adapter
+
+第三层：自动化任务层
+定时抓热搜、筛选话题、生成草稿、每日复盘
+```
+
+整体架构如下：
+
+```text
+┌────────────────────────────────────┐
+│    Codex / Claude / Cursor / 用户    │
+└──────────────────┬─────────────────┘
+                   ↓
+┌────────────────────────────────────┐
+│          MCP Server 工具层           │
+│ get_hot_topics / generate_comment   │
+│ safety_check / save_draft           │
+└──────────────────┬─────────────────┘
+                   ↓
+┌────────────────────────────────────┐
+│          HotComment-AI API           │
+│              FastAPI                 │
+└──────────────────┬─────────────────┘
+                   ↓
+┌────────────────────────────────────┐
+│        Generation Pipeline           │
+│ FactSummarizer / TopicClassifier     │
+│ RAGRetriever / PersonaRewriter       │
+│ SafetyChecker                        │
+└──────────────────┬─────────────────┘
+                   ↓
+┌────────────────────────────────────┐
+│             Draft Queue              │
+│           草稿箱 / 人工审核           │
+└────────────────────────────────────┘
+```
+
+这种设计的好处：
+
+1. 后端业务逻辑独立，不绑定某个 Agent 平台。
+2. MCP 只是适配层，后期可以替换或扩展。
+3. 自动化任务可以单独开关。
+4. 所有入口都必须经过 SafetyChecker。
+5. 生成结果进入草稿箱，而不是直接发布。
+6. Codex 可以作为开发代理，也可以作为工具调用者。
+
+---
+
+### 3B.4 MCP 工具服务设计
+
+建议新增一个独立目录：
+
+```text
+mcp_server/
+```
+
+该目录负责把 HotComment-AI 的能力暴露给 Codex / Agent。
+
+#### MCP 工具列表
+
+| 工具名 | 作用 | 是否允许自动调用 | 风险等级 |
+|---|---|---|---|
+| `get_hot_topics` | 获取微博热搜列表 | 是 | 低 |
+| `classify_topic` | 判断话题类型和风险 | 是 | 低 |
+| `retrieve_knowledge` | 检索本地知识库 | 是 | 低 |
+| `generate_comment` | 生成锐评草稿 | 是，但必须审查 | 中 |
+| `safety_check` | 检查文案风险 | 是 | 低 |
+| `save_draft` | 保存草稿 | 是 | 低 |
+| `list_drafts` | 查看草稿箱 | 是 | 低 |
+| `daily_digest` | 生成每日热点复盘 | 是 | 中 |
+| `export_draft` | 导出草稿 Markdown | 是 | 低 |
+| `publish_to_weibo` | 发布到微博 | 不建议实现 | 高 |
+
+项目第一版 MCP 不实现 `publish_to_weibo`。
+
+---
+
+### 3B.5 MCP 工具：get_hot_topics
+
+作用：获取微博热搜列表。
+
+输入：
+
+```json
+{
+  "source": "weibo",
+  "limit": 20,
+  "include_lifecycle": true
+}
+```
+
+输出：
+
+```json
+{
+  "items": [
+    {
+      "rank": 1,
+      "keyword": "某品牌文案争议",
+      "hot_value": "1234567",
+      "url": "",
+      "status": "RISING",
+      "first_seen_at": "",
+      "last_seen_at": ""
+    }
+  ]
+}
+```
+
+实现要求：
+
+1. 第一版调用 MockHotSearchProvider。
+2. 第二版调用 WeiboMobileHotSearchProvider。
+3. 如果真实接口失败，fallback 到 mock 或历史缓存。
+4. 不要求登录微博。
+5. 不绕过验证码或平台限制。
+
+---
+
+### 3B.6 MCP 工具：classify_topic
+
+作用：判断话题类型、风险等级和适合的人格。
+
+输入：
+
+```json
+{
+  "topic": "某品牌母亲节文案争议",
+  "context_text": ""
+}
+```
+
+输出：
+
+```json
+{
+  "topic_type": "brand_pr",
+  "risk_level": "medium",
+  "recommended_persona": "pr_critic",
+  "allow_emotional_comment": true,
+  "max_emotion_level": 8,
+  "reason": "该话题主要涉及品牌公关和广告表达争议，允许较强批评，但应避免无证据指控。"
+}
+```
+
+实现要求：
+
+1. 可先使用规则分类。
+2. 后续可接 LLM 分类。
+3. 高风险话题必须限制情绪强度。
+4. 分类结果必须传给后续生成模块。
+
+---
+
+### 3B.7 MCP 工具：retrieve_knowledge
+
+作用：从本地知识库中检索观点依据。
+
+输入：
+
+```json
+{
+  "query": "品牌 母亲节 文案 母职叙事 情绪营销",
+  "top_k": 5
+}
+```
+
+输出：
+
+```json
+{
+  "results": [
+    {
+      "content": "品牌在母亲节营销中常见的问题是将母亲价值等同于牺牲……",
+      "source": "brand_pr_cases.md",
+      "score": 0.86
+    }
+  ]
+}
+```
+
+实现要求：
+
+1. 第一版可使用 KeywordRetriever。
+2. 第二版接 Chroma。
+3. 每条结果保留 source。
+4. 结果只作为观点依据，不当作绝对事实。
+
+---
+
+### 3B.8 MCP 工具：generate_comment
+
+作用：生成完整锐评草稿。
+
+输入：
+
+```json
+{
+  "topic": "某品牌母亲节文案争议",
+  "context_text": "",
+  "persona": "pr_critic",
+  "emotion_level": 8,
+  "output_formats": [
+    "one_liner",
+    "short_comment",
+    "emotional_version",
+    "rational_version",
+    "ironic_version",
+    "comment_replies"
+  ],
+  "save_to_draft": true
+}
+```
+
+输出：
+
+```json
+{
+  "topic": "某品牌母亲节文案争议",
+  "fact_summary": {},
+  "topic_classification": {},
+  "retrieved_knowledge": [],
+  "opinion": {},
+  "output": {
+    "one_liner": "",
+    "short_comment": "",
+    "emotional_version": "",
+    "rational_version": "",
+    "ironic_version": "",
+    "comment_replies": []
+  },
+  "safety": {
+    "is_safe": true,
+    "risk_level": "medium",
+    "issues": []
+  },
+  "draft": {
+    "saved": true,
+    "draft_id": "draft_20260511_0001"
+  }
+}
+```
+
+实现要求：
+
+1. 必须调用完整 GenerationPipeline。
+2. 必须经过 SafetyChecker。
+3. 如果风险等级为 high，只保存理性版。
+4. 如果风险等级为 blocked，不保存情绪版。
+5. 默认不发布，只保存草稿。
+
+---
+
+### 3B.9 MCP 工具：safety_check
+
+作用：单独检查某段文案是否安全。
+
+输入：
+
+```json
+{
+  "topic": "某品牌母亲节文案争议",
+  "text": "这不是文案翻车，这是价值观裸奔。",
+  "context_text": ""
+}
+```
+
+输出：
+
+```json
+{
+  "is_safe": true,
+  "risk_level": "low",
+  "issues": [],
+  "suggestion": "",
+  "revised_text": ""
+}
+```
+
+检查维度：
+
+1. 是否有未证实事实。
+2. 是否有定罪式表达。
+3. 是否攻击普通人。
+4. 是否泄露隐私。
+5. 是否包含歧视性表达。
+6. 是否煽动网暴。
+7. 是否涉及灾难、死亡、刑事案件、未成年人等高风险主题。
+
+---
+
+### 3B.10 MCP 工具：save_draft 与 list_drafts
+
+#### save_draft
+
+输入：
+
+```json
+{
+  "topic": "某品牌母亲节文案争议",
+  "content": "……",
+  "persona": "pr_critic",
+  "risk_level": "medium",
+  "source": "mcp_generate_comment",
+  "metadata": {}
+}
+```
+
+输出：
+
+```json
+{
+  "draft_id": "draft_20260511_0001",
+  "status": "pending_review"
+}
+```
+
+#### list_drafts
+
+输入：
+
+```json
+{
+  "status": "pending_review",
+  "limit": 20
+}
+```
+
+输出：
+
+```json
+{
+  "drafts": [
+    {
+      "draft_id": "draft_20260511_0001",
+      "topic": "某品牌母亲节文案争议",
+      "persona": "pr_critic",
+      "risk_level": "medium",
+      "created_at": "",
+      "status": "pending_review"
+    }
+  ]
+}
+```
+
+草稿状态建议：
+
+```text
+pending_review     待审核
+approved           已通过
+rejected           已拒绝
+needs_revision     需修改
+exported           已导出
+archived           已归档
+```
+
+---
+
+### 3B.11 自动化任务设计
+
+建议新增目录：
+
+```text
+automations/
+```
+
+自动化任务只负责“生成候选草稿”，不负责自动发布。
+
+#### 自动化任务 1：fetch_hot_topics_job
+
+执行频率：
+
+```text
+每 30 分钟
+```
+
+任务流程：
+
+```text
+1. 获取微博热搜 Top 50。
+2. 保存到数据库。
+3. 对比上一轮结果。
+4. 更新生命周期状态。
+5. 记录 NEW / RISING / HOT / FALLING / GONE。
+```
+
+#### 自动化任务 2：classify_hot_topics_job
+
+执行频率：
+
+```text
+每次热搜更新后
+```
+
+任务流程：
+
+```text
+1. 读取最新热搜。
+2. 调用 TopicClassifier。
+3. 标记话题类型。
+4. 标记风险等级。
+5. 过滤不适合评论的话题。
+```
+
+过滤规则：
+
+```text
+1. 灾难死亡话题默认不生成情绪化锐评。
+2. 未成年人相关话题默认不生成情绪化锐评。
+3. 刑事案件默认只做理性摘要。
+4. 品牌公关、消费争议、平台争议优先生成。
+5. 娱乐八卦默认降低优先级。
+```
+
+#### 自动化任务 3：generate_drafts_job
+
+执行频率：
+
+```text
+每次分类完成后，或每小时执行一次
+```
+
+任务流程：
+
+```text
+1. 读取低风险或中风险话题。
+2. 按推荐人格生成草稿。
+3. 控制 emotion_level 不超过 max_emotion_level。
+4. 调用 SafetyChecker。
+5. 保存安全草稿到 Draft Queue。
+6. 高风险草稿只保留理性版。
+```
+
+#### 自动化任务 4：daily_digest_job
+
+执行频率：
+
+```text
+每天晚上
+```
+
+任务流程：
+
+```text
+1. 汇总当日热搜。
+2. 列出最高热度话题。
+3. 列出最适合锐评话题。
+4. 列出高风险不建议评论话题。
+5. 总结新增案例。
+6. 输出每日复盘 Markdown。
+```
+
+---
+
+### 3B.12 自动化策略与安全策略
+
+建议新增目录：
+
+```text
+automations/policies/
+```
+
+#### topic_filter_policy.py
+
+职责：
+
+```text
+1. 判断话题是否适合生成。
+2. 判断是否需要跳过。
+3. 判断是否只允许理性摘要。
+```
+
+规则示例：
+
+```python
+if topic_type in ["disaster", "minor_related", "crime_case"]:
+    allow_emotional_comment = False
+    max_emotion_level = min(max_emotion_level, 3)
+```
+
+#### risk_policy.py
+
+职责：
+
+```text
+1. 根据风险等级决定输出范围。
+2. high 风险只保存理性版。
+3. blocked 风险不保存草稿。
+4. medium 风险需要人工重点审核。
+```
+
+规则示例：
+
+```python
+if risk_level == "blocked":
+    return "skip"
+
+if risk_level == "high":
+    return "save_rational_only"
+
+if risk_level == "medium":
+    return "save_with_warning"
+
+return "save_all"
+```
+
+#### draft_generation_policy.py
+
+职责：
+
+```text
+1. 控制每轮生成数量。
+2. 避免同一话题重复生成。
+3. 避免过度追逐单一争议。
+4. 控制每日草稿上限。
+```
+
+建议限制：
+
+```text
+每 30 分钟最多生成 3 个话题草稿。
+每个话题每天最多生成 2 次。
+每日最多自动生成 30 条草稿。
+高风险话题不进入自动生成队列。
+```
+
+---
+
+### 3B.13 草稿箱机制设计
+
+草稿箱是项目从“自动生成”到“人工发布”的关键缓冲层。
+
+建议数据表：
+
+```sql
+CREATE TABLE drafts (
+    id TEXT PRIMARY KEY,
+    topic TEXT NOT NULL,
+    content TEXT NOT NULL,
+    persona TEXT,
+    risk_level TEXT,
+    status TEXT DEFAULT 'pending_review',
+    source TEXT,
+    metadata_json TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+草稿字段说明：
+
+| 字段 | 说明 |
+|---|---|
+| id | 草稿 ID |
+| topic | 热点话题 |
+| content | 草稿内容 |
+| persona | 使用的人格 |
+| risk_level | 风险等级 |
+| status | 审核状态 |
+| source | 来源，例如 mcp、automation、manual |
+| metadata_json | 事实摘要、知识来源、生成参数 |
+| created_at | 创建时间 |
+| updated_at | 更新时间 |
+
+人工审核操作：
+
+```text
+approve_draft      通过
+reject_draft       拒绝
+revise_draft       修改
+export_draft       导出
+archive_draft      归档
+```
+
+第一版只需要实现：
+
+```text
+save_draft
+list_drafts
+update_draft_status
+export_draft_to_markdown
+```
+
+---
+
+### 3B.14 更新后的项目目录结构
+
+在原项目结构基础上，建议新增：
+
+```text
+hot-comment-ai/
+├── app/
+│   ├── ...
+│   └── services/
+│       ├── generation_pipeline.py
+│       ├── topic_classifier.py
+│       ├── safety_checker.py
+│       └── draft_service.py
+│
+├── mcp_server/
+│   ├── __init__.py
+│   ├── server.py
+│   ├── config.py
+│   ├── schemas.py
+│   ├── client.py
+│   └── tools/
+│       ├── __init__.py
+│       ├── get_hot_topics.py
+│       ├── classify_topic.py
+│       ├── retrieve_knowledge.py
+│       ├── generate_comment.py
+│       ├── safety_check.py
+│       ├── save_draft.py
+│       ├── list_drafts.py
+│       └── daily_digest.py
+│
+├── automations/
+│   ├── __init__.py
+│   ├── scheduler.py
+│   ├── jobs/
+│   │   ├── __init__.py
+│   │   ├── fetch_hot_topics_job.py
+│   │   ├── classify_hot_topics_job.py
+│   │   ├── generate_drafts_job.py
+│   │   └── daily_digest_job.py
+│   └── policies/
+│       ├── __init__.py
+│       ├── topic_filter_policy.py
+│       ├── risk_policy.py
+│       └── draft_generation_policy.py
+│
+├── drafts/
+│   ├── README.md
+│   └── exported/
+│
+└── docs/
+    ├── mcp_design.md
+    ├── automation_design.md
+    └── draft_review_workflow.md
+```
+
+---
+
+### 3B.15 Codex 在本项目中的角色边界
+
+Codex 应该被定位为：
+
+```text
+开发代理 + 工具调用者 + 流程编排者
+```
+
+不应该被定位为：
+
+```text
+自动舆论操控者
+```
+
+Codex 适合做：
+
+```text
+1. 创建项目结构。
+2. 编写 FastAPI 接口。
+3. 编写 MCP server。
+4. 编写自动化任务。
+5. 编写测试。
+6. 调试 Prompt。
+7. 整理知识库。
+8. 重构生成流水线。
+9. 生成草稿。
+10. 保存草稿。
+```
+
+Codex 不应该做：
+
+```text
+1. 自动发布微博。
+2. 自动评论他人微博。
+3. 自动追踪普通人。
+4. 自动组织攻击。
+5. 绕过平台限制。
+6. 批量制造争议。
+```
+
+---
+
+### 3B.16 给 Codex 的新增任务：实现 MCP Server
+
+```text
+请为 HotComment-AI 新增 MCP Server 支持。
+
+要求：
+1. 创建 mcp_server 目录。
+2. 实现 MCP server 基础入口 server.py。
+3. MCP 工具通过调用 FastAPI 服务或内部 service 实现。
+4. 第一版实现以下工具：
+   - get_hot_topics
+   - classify_topic
+   - retrieve_knowledge
+   - generate_comment
+   - safety_check
+   - save_draft
+   - list_drafts
+5. 不实现 publish_to_weibo。
+6. 所有生成类工具必须返回 safety 信息。
+7. generate_comment 默认 save_to_draft=true。
+8. blocked 风险不保存草稿。
+9. high 风险只保存 rational_version。
+10. 添加基础测试和 README。
+```
+
+验收标准：
+
+```text
+1. MCP server 可以本地启动。
+2. Codex / MCP client 可以发现工具列表。
+3. 调用 generate_comment 能返回完整结构。
+4. 调用 save_draft 能保存草稿。
+5. 调用 list_drafts 能查看草稿。
+6. 不存在自动发布能力。
+```
+
+---
+
+### 3B.17 给 Codex 的新增任务：实现自动化草稿系统
+
+```text
+请为 HotComment-AI 新增自动化草稿系统。
+
+要求：
+1. 创建 automations 目录。
+2. 使用 APScheduler 实现本地定时任务。
+3. 实现 fetch_hot_topics_job。
+4. 实现 classify_hot_topics_job。
+5. 实现 generate_drafts_job。
+6. 实现 daily_digest_job。
+7. 自动化任务只保存草稿，不发布。
+8. 添加 topic_filter_policy、risk_policy、draft_generation_policy。
+9. 每个任务都要有日志。
+10. 每个任务失败时不能影响主服务。
+```
+
+验收标准：
+
+```text
+1. 可以手动触发每个 job。
+2. 可以配置定时频率。
+3. 热搜能保存到数据库。
+4. 合适的话题能生成草稿。
+5. 高风险话题不会生成情绪化草稿。
+6. 每日复盘可以导出 Markdown。
+```
+
+---
+
+### 3B.18 给 Codex 的新增任务：实现草稿箱
+
+```text
+请为 HotComment-AI 实现 DraftService。
+
+要求：
+1. 使用 SQLite 保存草稿。
+2. 实现 Draft 数据模型。
+3. 实现 save_draft。
+4. 实现 list_drafts。
+5. 实现 get_draft。
+6. 实现 update_draft_status。
+7. 实现 export_draft_to_markdown。
+8. 草稿必须保存 topic、content、persona、risk_level、status、source、metadata。
+9. 默认状态为 pending_review。
+10. 不实现自动发布。
+```
+
+验收标准：
+
+```text
+1. 可以保存草稿。
+2. 可以查看草稿列表。
+3. 可以更新审核状态。
+4. 可以导出 Markdown。
+5. generate_comment 可以选择保存到草稿箱。
+```
+
+---
+
+### 3B.19 推荐最终演进路线
+
+综合前文，本项目最终演进路线建议为：
+
+```text
+阶段 1：本地 MVP
+FastAPI + Streamlit + MockLLM + KeywordRetriever + SafetyChecker
+
+阶段 2：RAG 增强
+Chroma + Markdown 知识库 + Embedding + /knowledge/rebuild
+
+阶段 3：微博热搜接入
+HotSearchProvider + Mock Provider + Weibo Provider + 热点缓存
+
+阶段 4：TopicClassifier
+话题分类 + 风险策略 + 推荐人格 + 情绪上限
+
+阶段 5：MCP 工具化
+mcp_server + get_hot_topics + generate_comment + save_draft
+
+阶段 6：自动化草稿
+APScheduler + 热搜定时抓取 + 自动分类 + 自动生成草稿
+
+阶段 7：审核工作台
+草稿箱 + 审核状态 + 导出 Markdown + 人工确认
+
+阶段 8：高级舆情
+生命周期追踪 + 每日复盘 + 案例沉淀 + 多平台扩展
+```
+
+---
+
+### 3B.20 本节结论
+
+本项目做成 Codex / Agent 插件化工具是正确方向，但正确边界是：
+
+```text
+让 Agent 帮你抓热点、筛话题、生成草稿、做安全审查、保存草稿。
+```
+
+不是：
+
+```text
+让 Agent 自动发微博、自动评论、自动引战。
+```
+
+最终推荐产品形态：
+
+```text
+HotComment-AI
+= FastAPI 业务后端
++ RAG 知识库
++ 人格化生成器
++ SafetyChecker
++ MCP 工具服务
++ 自动化草稿任务
++ 草稿箱与人工审核
+```
+
+一句话总结：
+
+> 这个项目最适合做成“Codex / MCP 可调用的热点锐评草稿生成工具”，再配一套自动化任务，让系统自动发现热点和生成候选草稿，但最终发布权始终留在人手里。
+
+
 ## 4. 目录结构设计
 
 推荐项目目录如下：
@@ -987,6 +1951,7 @@ hot-comment-ai/
 │   │   ├── opinion_generator.py
 │   │   ├── persona_rewriter.py
 │   │   ├── safety_checker.py
+│   │   ├── draft_service.py
 │   │   └── generation_pipeline.py
 │   │
 │   ├── llm/
@@ -1046,7 +2011,10 @@ hot-comment-ai/
     ├── architecture.md
     ├── api.md
     ├── prompt_design.md
-    └── roadmap.md
+    ├── roadmap.md
+    ├── mcp_design.md
+    ├── automation_design.md
+    └── draft_review_workflow.md
 ```
 
 ---
@@ -2213,7 +3181,9 @@ The MVP is complete when:
 3. The system can retrieve relevant knowledge chunks.
 4. The system can generate multiple commentary styles.
 5. The safety checker can return a risk result.
-6. The final output includes fact summary, opinion draft, generated comments, and safety metadata.
+6. The final output includes fact summary, topic classification, opinion draft, generated comments, and safety metadata.
+7. Generated content is saved as draft by default when called from MCP or automation.
+8. The project does not implement automatic Weibo publishing in MVP.
 ```
 
 ---
@@ -2735,8 +3705,12 @@ HOT_SEARCH_API_KEY=
 16. 加入 mock 热搜接口
 17. 补充测试
 18. Docker 化
-19. 后续接入真实微博热榜 API
-20. 后续扩展自动任务和审核系统
+19. 接入真实微博热榜 API
+20. 新增 DraftService 草稿箱
+21. 新增 MCP Server 工具层
+22. 新增自动化草稿任务
+23. 新增审核工作台
+24. 后续扩展生命周期追踪和多平台舆情
 ```
 
 ---

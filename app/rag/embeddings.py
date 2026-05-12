@@ -5,6 +5,7 @@ import math
 import re
 from abc import ABC, abstractmethod
 
+import httpx
 from openai import OpenAI
 
 from app.core.config import Settings
@@ -50,7 +51,7 @@ class OpenAIEmbeddingClient(BaseEmbeddingClient):
         self.client = OpenAI(
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
-            timeout=settings.request_timeout_seconds,
+            http_client=httpx.Client(timeout=settings.request_timeout_seconds, trust_env=False),
         )
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:

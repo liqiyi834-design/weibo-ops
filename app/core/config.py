@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = Field(default=30.0, validation_alias="REQUEST_TIMEOUT_SECONDS")
     knowledge_dir: Path = Field(default=Path("app/knowledge"), validation_alias="KNOWLEDGE_DIR")
     rag_index_path: Path = Field(default=Path(".rag_index/index.json"), validation_alias="RAG_INDEX_PATH")
+    weibo_cookie: str | None = Field(default=None, validation_alias="WEIBO_COOKIE")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
