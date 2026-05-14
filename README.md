@@ -56,6 +56,77 @@ python -m uvicorn app.main:app --reload
 GET http://127.0.0.1:8000/health
 ```
 
+## Streamlit 工作台
+
+短期协作方案是 Streamlit Community Cloud 优先走“本地服务模式”：
+
+```text
+Streamlit Community Cloud
+-> 直接调用 app/services
+-> 读写候选池、热搜抓取、选题评分
+```
+
+这种方式不需要单独部署 FastAPI，适合先让两个人快速试用。
+
+### Streamlit Community Cloud 部署
+
+创建 App 时填写：
+
+```text
+Repository: liqiyi834-design/weibo-ops
+Branch: main
+Main file path: app_ui/streamlit_app.py
+```
+
+Secrets 示例：
+
+```toml
+LLM_PROVIDER = "openai"
+OPENAI_API_KEY = "你的 DeepSeek Key"
+OPENAI_BASE_URL = "https://api.deepseek.com"
+OPENAI_MODEL = "deepseek-v4-flash"
+USE_OPENAI_EMBEDDINGS = "false"
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+REQUEST_TIMEOUT_SECONDS = "30"
+KNOWLEDGE_DIR = "app/knowledge"
+RAG_INDEX_PATH = ".rag_index/index.json"
+WEIBO_COOKIE = "你的微博 Cookie"
+```
+
+默认不填 `API_BASE_URL`，工作台会使用“本地服务模式”。如果后续单独部署 FastAPI，再在 Secrets 里加入：
+
+```toml
+API_BASE_URL = "https://你的-fastapi-地址"
+```
+
+注意：Streamlit Community Cloud 的文件系统适合试用和轻量协作，不应当视为长期数据库。当前候选池会写入 `output/topic_candidates/`；如果 App 重启或迁移，数据可能丢失。正式协作后续建议接外部持久化存储或独立 FastAPI 后端。
+
+本地开发时也可以启动 FastAPI：
+
+```powershell
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+再启动 Streamlit：
+
+```powershell
+streamlit run app_ui/streamlit_app.py
+```
+
+如果本地 Streamlit 要连接远端 FastAPI，设置：
+
+```powershell
+$env:API_BASE_URL="https://你的-fastapi-地址"
+streamlit run app_ui/streamlit_app.py
+```
+
+当前工作台第一版支持：
+
+- 生成今日热搜候选池。
+- 查看候选池列表与详情。
+- 人工标记 `candidate` / `selected` / `skipped` / `researched`。
+- 查看账号配置与表达风格。
+
 生成接口：
 
 ```text

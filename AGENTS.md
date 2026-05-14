@@ -132,6 +132,57 @@ topic + context_text
 - 高风险话题会禁用不合适的高情绪/嘲讽风格，自动切到 `rational_critic`。
 - 后续多账号管理应基于账号配置扩展，不要把账号差异硬编码进生成逻辑。
 
+### Streamlit 工作台
+
+已实现 Streamlit 前端工作台第一版：
+
+- `app_ui/streamlit_app.py`
+- 通过 `API_BASE_URL` 调用 FastAPI，不复制业务逻辑。
+- 支持生成今日热搜候选池。
+- 支持查看候选池列表与详情。
+- 支持人工标记候选项状态：`candidate`、`selected`、`skipped`、`researched`。
+- 支持查看账号配置与表达风格。
+
+短期部署建议已调整为 Streamlit Community Cloud 方案 B：
+
+```text
+Streamlit Community Cloud
+-> 本地服务模式直接调用 app/services
+-> 不单独部署 FastAPI
+MCP 暂时本地跑
+```
+
+Streamlit App 配置：
+
+```text
+Repository: liqiyi834-design/weibo-ops
+Branch: main
+Main file path: app_ui/streamlit_app.py
+```
+
+Secrets 至少配置：
+
+```toml
+OPENAI_API_KEY = "..."
+OPENAI_BASE_URL = "https://api.deepseek.com"
+OPENAI_MODEL = "deepseek-v4-flash"
+USE_OPENAI_EMBEDDINGS = "false"
+WEIBO_COOKIE = "..."
+```
+
+默认不填 `API_BASE_URL`，工作台会直接调用 `app/services`。后续如果单独部署 FastAPI，再填 `API_BASE_URL` 并切换到 FastAPI 模式。
+
+注意：Streamlit Community Cloud 的文件系统只适合试用和轻量协作，不应视为长期数据库。当前候选池写入 `output/topic_candidates/`；正式协作后续建议接外部持久化存储或独立 FastAPI 后端。
+
+本地启动：
+
+```powershell
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+streamlit run app_ui/streamlit_app.py
+```
+
+MCP 不暴露公网，继续本地调用。
+
 ### 真实模型接入
 
 已实现 OpenAI-compatible LLM client：
