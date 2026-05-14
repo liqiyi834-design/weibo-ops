@@ -191,3 +191,47 @@ class CandidatePoolSummary(BaseModel):
 class CandidateStatusUpdateRequest(BaseModel):
     status: CandidateStatus
     operator_note: str | None = None
+
+
+DraftStatus = Literal["draft", "reviewed", "rejected", "published_manually"]
+
+
+class DraftCreateRequest(GenerateCommentRequest):
+    candidate_pool_id: str | None = None
+    candidate_item_id: str | None = None
+    title: str | None = None
+
+
+class DraftUpdateRequest(BaseModel):
+    status: DraftStatus | None = None
+    operator_note: str | None = None
+    edited_text: str | None = None
+
+
+class DraftRecord(BaseModel):
+    id: str
+    title: str
+    topic: str
+    account_id: str
+    style: str
+    status: DraftStatus = "draft"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    candidate_pool_id: str | None = None
+    candidate_item_id: str | None = None
+    risk_level: Literal["low", "medium", "high", "blocked"] = "low"
+    generated: GenerateCommentResponse
+    edited_text: str | None = None
+    operator_note: str | None = None
+
+
+class DraftSummary(BaseModel):
+    id: str
+    title: str
+    topic: str
+    account_id: str
+    style: str
+    status: DraftStatus
+    risk_level: Literal["low", "medium", "high", "blocked"]
+    created_at: datetime
+    updated_at: datetime

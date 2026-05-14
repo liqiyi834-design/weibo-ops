@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from app.core.config import Settings, get_settings
 from app.llm.client import BaseLLMClient, build_llm_client
-from app.schemas.comment import GenerateCommentRequest, HotTopic
+from app.schemas.comment import DraftUpdateRequest, GenerateCommentRequest, HotTopic
+from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
@@ -36,6 +37,63 @@ def generate_comment_tool(
         )
     )
     return response.model_dump()
+
+
+def save_draft_tool(
+    topic: str,
+    context_text: str = "",
+    style: str | None = None,
+    persona: str | None = None,
+    account_id: str = "today_direct",
+    emotion_level: int = 6,
+    use_rag: bool = True,
+    title: str | None = None,
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    settings: Settings | None = None,
+    llm: BaseLLMClient | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    active_llm = llm or build_llm_client(active_settings)
+    pipeline = GenerationPipeline(active_settings, active_llm)
+    generated = pipeline.generate(
+        GenerateCommentRequest(
+            topic=topic,
+            account_id=account_id,
+            context_text=context_text,
+            style=style,
+            persona=persona,
+            emotion_level=emotion_level,
+            use_rag=use_rag,
+        )
+    )
+    draft = DraftService().save(
+        generated=generated,
+        title=title,
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+    )
+    return draft.model_dump()
+
+
+def list_drafts_tool() -> list[dict]:
+    return [draft.model_dump() for draft in DraftService().list_drafts()]
+
+
+def update_draft_tool(
+    draft_id: str,
+    status: str | None = None,
+    operator_note: str | None = None,
+    edited_text: str | None = None,
+) -> dict:
+    request = DraftUpdateRequest(status=status, operator_note=operator_note, edited_text=edited_text)
+    draft = DraftService().update(
+        draft_id=draft_id,
+        status=request.status,
+        operator_note=request.operator_note,
+        edited_text=request.edited_text,
+    )
+    return draft.model_dump()
 
 
 def rebuild_knowledge_tool(settings: Settings | None = None) -> dict:

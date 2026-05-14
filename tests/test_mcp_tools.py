@@ -1,13 +1,19 @@
 from pathlib import Path
+from uuid import uuid4
 
 from app.core.config import Settings
 from app.llm.client import MockLLMClient
+from app.services.draft_service import DraftService
+import mcp_server.tools as tools
 from mcp_server.tools import (
     generate_comment_tool,
     get_hot_topics_tool,
+    list_drafts_tool,
     rebuild_knowledge_tool,
     search_knowledge_tool,
     select_comment_topics_tool,
+    save_draft_tool,
+    update_draft_tool,
 )
 
 
@@ -61,3 +67,24 @@ def test_mcp_select_comment_topics_tool():
     assert result["evaluated_count"] == 3
     assert result["selected"]
     assert result["selected"][0]["reason"]
+
+
+def test_mcp_draft_tools(monkeypatch):
+    test_root = Path(".rag_index") / f"mcp-draft-test-{uuid4().hex}"
+    monkeypatch.setattr(tools, "DraftService", lambda: DraftService(root=test_root))
+    settings = Settings(OPENAI_API_KEY=None, KNOWLEDGE_DIR=Path("app/knowledge"))
+
+    draft = save_draft_tool(
+        topic="某品牌文案翻车",
+        context_text="品牌文案被质疑表达不当。",
+        style="pr_critic",
+        settings=settings,
+        llm=MockLLMClient(),
+    )
+    listed = list_drafts_tool()
+    updated = update_draft_tool(draft["id"], status="reviewed", operator_note="已审")
+
+    assert draft["status"] == "draft"
+    assert listed[0]["id"] == draft["id"]
+    assert updated["status"] == "reviewed"
+    assert updated["operator_note"] == "已审"

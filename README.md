@@ -125,6 +125,8 @@ streamlit run app_ui/streamlit_app.py
 - 生成今日热搜候选池。
 - 查看候选池列表与详情。
 - 人工标记 `candidate` / `selected` / `skipped` / `researched`。
+- 从 `selected` 话题生成草稿并保存到草稿箱。
+- 查看草稿、人工编辑正文、更新审核状态。
 - 查看账号配置与表达风格。
 
 生成接口：
@@ -184,6 +186,9 @@ python -m mcp_server.server
 
 - `get_hot_topics`：获取微博热搜，失败时 fallback 到 mock 热点
 - `generate_comment`：生成微博锐评草稿，返回事实摘要、RAG 检索、观点、人格化输出和安全审查
+- `save_draft`：生成并保存待审核草稿，不发布
+- `list_drafts`：查看已保存草稿
+- `update_draft`：更新草稿审核状态、备注或人工编辑正文
 - `rebuild_knowledge`：重建本地 RAG 索引
 - `search_knowledge`：搜索本地知识库
 

@@ -141,6 +141,8 @@ topic + context_text
 - 支持生成今日热搜候选池。
 - 支持查看候选池列表与详情。
 - 支持人工标记候选项状态：`candidate`、`selected`、`skipped`、`researched`。
+- 支持从 `selected` 候选题生成草稿并保存到草稿箱。
+- 支持查看草稿、人工编辑正文、更新审核状态。
 - 支持查看账号配置与表达风格。
 
 短期部署建议已调整为 Streamlit Community Cloud 方案 B：
@@ -249,6 +251,9 @@ mcp_server/tools.py
 - `get_hot_topics`
 - `select_comment_topics`
 - `generate_comment`
+- `save_draft`
+- `list_drafts`
+- `update_draft`
 - `rebuild_knowledge`
 - `search_knowledge`
 
@@ -285,6 +290,7 @@ tests/test_candidate_pool.py
 tests/test_topic_selection.py
 tests/test_topic_research.py
 tests/test_style_service.py
+tests/test_draft_service.py
 ```
 
 已验证：
@@ -296,12 +302,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-28 passed
+31 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的选题推荐、二次采样、候选池、账号配置和风格选择开发改动。提交前必须确认：
+当前工作区包含尚未提交的 Streamlit 工作台、草稿箱、选题推荐、二次采样、候选池、账号配置和风格选择开发改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -311,7 +317,7 @@ python -m pytest tests -q -p no:cacheprovider
 建议提交信息：
 
 ```text
-实现热搜选题推荐、候选池与风格配置
+实现Streamlit工作台与草稿箱
 ```
 
 ## 重要经验与踩坑记录
@@ -433,24 +439,39 @@ docs/HotComment-AI技术方案.md
 
 ### P2：草稿箱
 
-根据最新方案文档，实现草稿箱机制。
+已实现草稿箱第一版。
 
-推荐目录：
+已实现目录：
 
 ```text
-drafts/
+output/drafts/
 ```
 
-推荐能力：
+已实现能力：
 
-- 保存生成结果为 Markdown 或 JSON。
-- 记录 topic、persona、risk_level、source、created_at。
+- 保存生成结果为 JSON。
+- 记录 topic、account_id、style、risk_level、candidate_pool_id、candidate_item_id、created_at、updated_at。
+- 支持人工编辑正文 `edited_text` 和审核备注 `operator_note`。
 - 不自动发布。
 
-待实现工具：
+已实现 API：
+
+- `POST /api/drafts`
+- `GET /api/drafts`
+- `GET /api/drafts/{draft_id}`
+- `PATCH /api/drafts/{draft_id}`
+
+已实现 MCP 工具：
 
 - `save_draft`
 - `list_drafts`
+- `update_draft`
+
+已接入 Streamlit：
+
+- 从 `selected` 候选题生成草稿。
+- 查看草稿列表和详情。
+- 保存人工编辑正文、审核状态和备注。
 
 ### P2A：多账号与表达风格配置
 

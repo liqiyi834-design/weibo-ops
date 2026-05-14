@@ -15,14 +15,19 @@ if str(ROOT_DIR) not in sys.path:
 from app.core.config import get_settings
 from app.schemas.comment import HotTopic
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.draft_service import DraftService
+from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_selection_service import TopicSelectionService
+from app.llm.client import build_llm_client
+from app.schemas.comment import GenerateCommentRequest
 
 
 DEFAULT_API_BASE_URL = os.getenv("API_BASE_URL", "")
 STATUS_OPTIONS = ["candidate", "selected", "skipped", "researched"]
+DRAFT_STATUS_OPTIONS = ["draft", "reviewed", "rejected", "published_manually"]
 
 
 class ApiClient:
@@ -61,11 +66,24 @@ class ApiClient:
     def list_styles(self) -> list[dict]:
         return self.request("GET", "/api/comment/styles")["styles"]
 
+    def create_draft(self, payload: dict) -> dict:
+        return self.request("POST", "/api/drafts", json=payload)
+
+    def list_drafts(self) -> list[dict]:
+        return self.request("GET", "/api/drafts")
+
+    def get_draft(self, draft_id: str) -> dict:
+        return self.request("GET", f"/api/drafts/{draft_id}")
+
+    def update_draft(self, draft_id: str, payload: dict) -> dict:
+        return self.request("PATCH", f"/api/drafts/{draft_id}", json=payload)
+
 
 class LocalServiceClient:
     def __init__(self):
         self.settings = get_settings()
         self.candidate_pool_service = CandidatePoolService()
+        self.draft_service = DraftService()
         self.style_service = StyleService()
 
     def health(self) -> dict:
@@ -133,6 +151,33 @@ class LocalServiceClient:
     def list_styles(self) -> list[dict]:
         return [style.model_dump(mode="json") for style in self.style_service.list_styles()]
 
+    def create_draft(self, payload: dict) -> dict:
+        llm = build_llm_client(self.settings)
+        pipeline = GenerationPipeline(self.settings, llm)
+        generated = pipeline.generate(GenerateCommentRequest(**payload))
+        draft = self.draft_service.save(
+            generated=generated,
+            title=payload.get("title"),
+            candidate_pool_id=payload.get("candidate_pool_id"),
+            candidate_item_id=payload.get("candidate_item_id"),
+        )
+        return draft.model_dump(mode="json")
+
+    def list_drafts(self) -> list[dict]:
+        return [draft.model_dump(mode="json") for draft in self.draft_service.list_drafts()]
+
+    def get_draft(self, draft_id: str) -> dict:
+        return self.draft_service.get(draft_id).model_dump(mode="json")
+
+    def update_draft(self, draft_id: str, payload: dict) -> dict:
+        draft = self.draft_service.update(
+            draft_id=draft_id,
+            status=payload.get("status"),
+            operator_note=payload.get("operator_note"),
+            edited_text=payload.get("edited_text"),
+        )
+        return draft.model_dump(mode="json")
+
 
 def main() -> None:
     apply_streamlit_secrets_to_env()
@@ -158,13 +203,16 @@ def main() -> None:
         if st.button("检查连接", use_container_width=True):
             run_action(lambda: st.success(api.health()))
 
-    tab_create, tab_pools, tab_config = st.tabs(["生成候选池", "候选池审核", "账号与风格"])
+    tab_create, tab_pools, tab_drafts, tab_config = st.tabs(["生成候选池", "候选池审核", "草稿箱", "账号与风格"])
 
     with tab_create:
         render_create_pool(api)
 
     with tab_pools:
         render_candidate_pools(api)
+
+    with tab_drafts:
+        render_drafts(api)
 
     with tab_config:
         render_config(api)
@@ -296,6 +344,197 @@ def render_status_editor(api: ApiClient, pool: dict) -> None:
             st.session_state.pop("pools_cache", None)
             st.success("状态已更新。")
             render_pool_detail(updated_pool)
+
+        run_action(action)
+
+
+def render_drafts(api: ApiClient) -> None:
+    st.subheader("草稿箱")
+    st.write("从 selected 候选题生成草稿，保存为待人工审核状态。系统不自动发布。")
+
+    render_create_draft_from_candidate(api)
+    st.divider()
+    render_draft_list(api)
+
+
+def render_create_draft_from_candidate(api: ApiClient) -> None:
+    st.markdown("### 从已选题生成草稿")
+
+    pools: list[dict] = []
+    run_action(lambda: pools.extend(api.list_candidate_pools()))
+    if not pools:
+        st.info("还没有候选池。先生成候选池并标记 selected。")
+        return
+
+    pool_options = {
+        f"{pool['created_at']} | {pool['title']} | {pool['id']}": pool["id"]
+        for pool in pools
+    }
+    pool_label = st.selectbox("候选池", list(pool_options.keys()), key="draft_pool_select")
+    pool_id = pool_options[pool_label]
+
+    pool_holder: dict[str, Any] = {}
+    run_action(lambda: pool_holder.update(api.get_candidate_pool(pool_id)))
+    if not pool_holder:
+        return
+
+    selected_items = [item for item in pool_holder["items"] if item["status"] == "selected"]
+    if not selected_items:
+        st.warning("这个候选池还没有 selected 话题。先到“候选池审核”里选择。")
+        return
+
+    item_options = {
+        f"{index + 1}. {item['keyword']} | {item['score']}/100": item
+        for index, item in enumerate(selected_items)
+    }
+    item_label = st.selectbox("selected 话题", list(item_options.keys()))
+    item = item_options[item_label]
+
+    accounts: list[dict] = []
+    styles: list[dict] = []
+    run_action(lambda: accounts.extend(api.list_accounts()))
+    run_action(lambda: styles.extend(api.list_styles()))
+    account_options = {f"{account['name']} ({account['id']})": account["id"] for account in accounts}
+    style_options = {f"{style['name']} ({style['id']})": style["id"] for style in styles}
+
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+        account_label = st.selectbox("账号", list(account_options.keys()))
+    with col_b:
+        style_label = st.selectbox("表达风格", list(style_options.keys()))
+    with col_c:
+        emotion_level = st.slider("情绪强度", min_value=1, max_value=10, value=6)
+
+    default_context = "\n".join(
+        [
+            f"推荐理由：{item['reason']}",
+            f"建议角度：{item['recommended_angle']}",
+            "避坑点：" + "；".join(item.get("avoid_points") or []),
+        ]
+    )
+    context_text = st.text_area("补充背景/写作要求", value=default_context, height=140)
+    use_rag = st.checkbox("启用 RAG 检索", value=True)
+
+    if st.button("生成并保存草稿", use_container_width=True):
+        payload = {
+            "title": item["keyword"],
+            "topic": item["keyword"],
+            "account_id": account_options[account_label],
+            "style": style_options[style_label],
+            "emotion_level": emotion_level,
+            "use_rag": use_rag,
+            "context_text": context_text,
+            "candidate_pool_id": pool_holder["id"],
+            "candidate_item_id": item["id"],
+        }
+
+        def action() -> None:
+            with st.spinner("正在生成草稿并保存..."):
+                draft = api.create_draft(payload)
+            st.success(f"草稿已保存：{draft['id']}")
+            render_draft_detail(draft)
+
+        run_action(action)
+
+
+def render_draft_list(api: ApiClient) -> None:
+    st.markdown("### 已保存草稿")
+    if st.button("刷新草稿列表"):
+        st.session_state.pop("drafts_cache", None)
+
+    def load_drafts() -> list[dict]:
+        if "drafts_cache" not in st.session_state:
+            st.session_state["drafts_cache"] = api.list_drafts()
+        return st.session_state["drafts_cache"]
+
+    drafts: list[dict] = []
+    run_action(lambda: drafts.extend(load_drafts()))
+    if not drafts:
+        st.info("还没有草稿。")
+        return
+
+    rows = [
+        {
+            "标题": draft["title"],
+            "话题": draft["topic"],
+            "状态": draft["status"],
+            "风险": draft["risk_level"],
+            "风格": draft["style"],
+            "更新时间": draft["updated_at"],
+            "draft_id": draft["id"],
+        }
+        for draft in drafts
+    ]
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    draft_options = {f"{draft['updated_at']} | {draft['title']} | {draft['id']}": draft["id"] for draft in drafts}
+    draft_label = st.selectbox("查看/编辑草稿", list(draft_options.keys()))
+    draft_id = draft_options[draft_label]
+
+    draft_holder: dict[str, Any] = {}
+    run_action(lambda: draft_holder.update(api.get_draft(draft_id)))
+    if draft_holder:
+        render_draft_detail(draft_holder)
+        render_draft_editor(api, draft_holder)
+
+
+def render_draft_detail(draft: dict) -> None:
+    st.markdown(f"**草稿 ID：** `{draft['id']}`")
+    st.markdown(f"**话题：** {draft['topic']}")
+    st.markdown(f"**状态：** {draft['status']} | **风险：** {draft['risk_level']} | **风格：** {draft['style']}")
+
+    output = draft["generated"]["output"]
+    st.markdown("#### 推荐正文")
+    st.write(output.get("short_comment", ""))
+    with st.expander("其他版本"):
+        st.markdown("**一句话：**")
+        st.write(output.get("one_liner", ""))
+        st.markdown("**情绪版：**")
+        st.write(output.get("emotional_version", ""))
+        st.markdown("**理性版：**")
+        st.write(output.get("rational_version", ""))
+        st.markdown("**阴阳怪气版：**")
+        st.write(output.get("ironic_version", ""))
+        st.markdown("**评论区回复：**")
+        for reply in output.get("comment_replies", []):
+            st.write(f"- {reply}")
+
+    if draft.get("edited_text"):
+        st.markdown("#### 人工编辑版")
+        st.write(draft["edited_text"])
+    if draft.get("operator_note"):
+        st.markdown("#### 人工备注")
+        st.write(draft["operator_note"])
+
+
+def render_draft_editor(api: ApiClient, draft: dict) -> None:
+    st.markdown("### 审核/编辑")
+    col_a, col_b = st.columns([1, 3])
+    with col_a:
+        status = st.selectbox(
+            "草稿状态",
+            DRAFT_STATUS_OPTIONS,
+            index=DRAFT_STATUS_OPTIONS.index(draft["status"]),
+        )
+    with col_b:
+        note = st.text_input("审核备注", value=draft.get("operator_note") or "")
+    edited_text = st.text_area(
+        "人工编辑正文",
+        value=draft.get("edited_text") or draft["generated"]["output"].get("short_comment", ""),
+        height=160,
+    )
+    if st.button("保存草稿修改", use_container_width=True):
+        payload = {
+            "status": status,
+            "operator_note": note,
+            "edited_text": edited_text,
+        }
+
+        def action() -> None:
+            updated = api.update_draft(draft["id"], payload)
+            st.session_state.pop("drafts_cache", None)
+            st.success("草稿已更新。")
+            render_draft_detail(updated)
 
         run_action(action)
 

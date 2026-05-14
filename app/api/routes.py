@@ -6,9 +6,11 @@ from app.llm.client import build_llm_client
 from app.schemas.comment import RetrievedKnowledge
 from app.schemas.comment import CandidatePool, CandidatePoolCreateRequest, CandidatePoolSummary
 from app.schemas.comment import CandidateStatusUpdateRequest
+from app.schemas.comment import DraftCreateRequest, DraftRecord, DraftSummary, DraftUpdateRequest
 from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
@@ -135,6 +137,43 @@ def generate_comment(request: GenerateCommentRequest) -> GenerateCommentResponse
     llm = build_llm_client(settings)
     pipeline = GenerationPipeline(settings, llm)
     return pipeline.generate(request)
+
+
+@router.post("/api/drafts", response_model=DraftRecord)
+def create_draft(request: DraftCreateRequest) -> DraftRecord:
+    generated = generate_comment(request)
+    return DraftService().save(
+        generated=generated,
+        title=request.title,
+        candidate_pool_id=request.candidate_pool_id,
+        candidate_item_id=request.candidate_item_id,
+    )
+
+
+@router.get("/api/drafts", response_model=list[DraftSummary])
+def list_drafts() -> list[DraftSummary]:
+    return DraftService().list_drafts()
+
+
+@router.get("/api/drafts/{draft_id}", response_model=DraftRecord)
+def get_draft(draft_id: str) -> DraftRecord:
+    try:
+        return DraftService().get(draft_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch("/api/drafts/{draft_id}", response_model=DraftRecord)
+def update_draft(draft_id: str, request: DraftUpdateRequest) -> DraftRecord:
+    try:
+        return DraftService().update(
+            draft_id=draft_id,
+            status=request.status,
+            operator_note=request.operator_note,
+            edited_text=request.edited_text,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/api/comment/personas")

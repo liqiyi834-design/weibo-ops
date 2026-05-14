@@ -5,9 +5,12 @@ from fastmcp import FastMCP
 from mcp_server.tools import (
     generate_comment_tool,
     get_hot_topics_tool,
+    list_drafts_tool,
     rebuild_knowledge_tool,
     search_knowledge_tool,
     select_comment_topics_tool,
+    save_draft_tool,
+    update_draft_tool,
 )
 
 mcp = FastMCP("weibo-ops-hotcomment")
@@ -56,6 +59,56 @@ def generate_comment(
         account_id=account_id,
         emotion_level=emotion_level,
         use_rag=use_rag,
+    )
+
+
+@mcp.tool
+def save_draft(
+    topic: str,
+    context_text: str = "",
+    style: str | None = None,
+    persona: str | None = None,
+    account_id: str = "today_direct",
+    emotion_level: int = 6,
+    use_rag: bool = True,
+    title: str | None = None,
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+) -> dict:
+    """Generate and save a reviewable draft without publishing it."""
+    return save_draft_tool(
+        topic=topic,
+        context_text=context_text,
+        style=style,
+        persona=persona,
+        account_id=account_id,
+        emotion_level=emotion_level,
+        use_rag=use_rag,
+        title=title,
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+    )
+
+
+@mcp.tool
+def list_drafts() -> list[dict]:
+    """List saved reviewable drafts."""
+    return list_drafts_tool()
+
+
+@mcp.tool
+def update_draft(
+    draft_id: str,
+    status: str | None = None,
+    operator_note: str | None = None,
+    edited_text: str | None = None,
+) -> dict:
+    """Update draft review status, operator note, or edited text."""
+    return update_draft_tool(
+        draft_id=draft_id,
+        status=status,
+        operator_note=operator_note,
+        edited_text=edited_text,
     )
 
 

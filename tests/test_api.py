@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import app.api.routes as routes
 from app.main import app
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.draft_service import DraftService
 
 
 def test_health():
@@ -109,3 +110,42 @@ def test_create_and_update_candidate_pool(monkeypatch):
 
     assert update_response.status_code == 200
     assert update_response.json()["items"][0]["status"] == "selected"
+
+
+def test_create_and_update_draft(monkeypatch):
+    test_root = Path(".rag_index") / f"api-draft-test-{uuid4().hex}"
+    monkeypatch.setattr(routes, "DraftService", lambda: DraftService(root=test_root))
+    client = TestClient(app)
+
+    create_response = client.post(
+        "/api/drafts",
+        json={
+            "title": "测试草稿",
+            "topic": "某品牌文案翻车",
+            "context_text": "品牌文案被质疑表达不当。",
+            "style": "pr_critic",
+            "emotion_level": 6,
+            "use_rag": False,
+            "candidate_pool_id": "pool-1",
+            "candidate_item_id": "item-1",
+        },
+    )
+    draft = create_response.json()
+
+    assert create_response.status_code == 200
+    assert draft["title"] == "测试草稿"
+    assert draft["status"] == "draft"
+    assert draft["generated"]["output"]["short_comment"]
+
+    update_response = client.patch(
+        f"/api/drafts/{draft['id']}",
+        json={
+            "status": "reviewed",
+            "operator_note": "已人工审核",
+            "edited_text": "人工编辑正文",
+        },
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["status"] == "reviewed"
+    assert update_response.json()["edited_text"] == "人工编辑正文"
