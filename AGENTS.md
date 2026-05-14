@@ -302,12 +302,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-31 passed
+34 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的 Streamlit 工作台、草稿箱、选题推荐、二次采样、候选池、账号配置和风格选择开发改动。提交前必须确认：
+当前工作区包含尚未提交的 JSON 重试逻辑和候选池批量选择入口改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -355,6 +355,12 @@ LLM request failed: Connection error.
 ```
 
 已在代码中通过 `httpx.Client(..., trust_env=False)` 让 LLM 和 embedding client 不继承坏代理环境变量。
+
+### LLM JSON 重试
+
+真实模型偶发会返回 `{}` 或缺少必要字段，导致 Pydantic 报 `Field required`，例如 `OpinionDraft.core_conflict` 缺失。
+
+已新增 `app/services/json_retry.py`，观点生成和风格改写会先检查必要字段；如果缺字段，会带缺失字段列表重试一次，只要求返回完整 JSON。第二次仍失败时才合并默认兜底，避免前端直接报 500。
 
 ### PowerShell 中文显示
 

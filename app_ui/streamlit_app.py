@@ -324,25 +324,27 @@ def render_status_editor(api: ApiClient, pool: dict) -> None:
         f"{index}. {item['keyword']} ({item['status']})": item
         for index, item in enumerate(pool["items"], 1)
     }
-    selected_item_label = st.selectbox("选择话题", list(item_labels.keys()))
-    item = item_labels[selected_item_label]
+    selected_item_labels = st.multiselect("选择一个或多个话题", list(item_labels.keys()))
+    selected_items = [item_labels[label] for label in selected_item_labels]
 
     col_a, col_b = st.columns([1, 3])
     with col_a:
         status = st.selectbox(
             "状态",
             STATUS_OPTIONS,
-            index=STATUS_OPTIONS.index(item["status"]),
+            index=STATUS_OPTIONS.index("selected"),
         )
     with col_b:
-        note = st.text_input("人工备注", value=item.get("operator_note") or "")
+        note = st.text_input("人工备注", value="")
 
-    if st.button("更新候选状态", use_container_width=True):
+    if st.button("批量更新候选状态", use_container_width=True, disabled=not selected_items):
         def action() -> None:
-            updated_pool = api.update_candidate_item(pool["id"], item["id"], status, note)
+            updated_pool = pool
+            for item in selected_items:
+                updated_pool = api.update_candidate_item(pool["id"], item["id"], status, note)
             st.session_state["current_pool_id"] = updated_pool["id"]
             st.session_state.pop("pools_cache", None)
-            st.success("状态已更新。")
+            st.success(f"已更新 {len(selected_items)} 个候选话题。")
             render_pool_detail(updated_pool)
 
         run_action(action)
