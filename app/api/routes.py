@@ -8,6 +8,7 @@ from app.schemas.comment import CandidatePool, CandidatePoolCreateRequest, Candi
 from app.schemas.comment import CandidateStatusUpdateRequest
 from app.schemas.comment import DraftCreateRequest, DraftRecord, DraftSummary, DraftUpdateRequest
 from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
+from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerResponse, ZhihuDraftCreateRequest
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse
 from app.services.candidate_pool_service import CandidatePoolService
@@ -19,6 +20,7 @@ from app.services.knowledge_service import KnowledgeService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_selection_service import TopicSelectionService
+from app.services.zhihu_answer_generator import ZhihuAnswerGenerator
 
 router = APIRouter()
 
@@ -141,10 +143,30 @@ def generate_comment(request: GenerateCommentRequest) -> GenerateCommentResponse
     return pipeline.generate(request)
 
 
+@router.post("/api/zhihu/answer/generate", response_model=GenerateZhihuAnswerResponse)
+def generate_zhihu_answer(request: GenerateZhihuAnswerRequest) -> GenerateZhihuAnswerResponse:
+    settings = get_settings()
+    llm = build_llm_client(settings)
+    return ZhihuAnswerGenerator(settings, llm).generate(request)
+
+
 @router.post("/api/drafts", response_model=DraftRecord)
 def create_draft(request: DraftCreateRequest) -> DraftRecord:
     generated = generate_comment(request)
     return DraftService().save(
+        generated=generated,
+        title=request.title,
+        candidate_pool_id=request.candidate_pool_id,
+        candidate_item_id=request.candidate_item_id,
+        platform=request.platform,
+        draft_type=request.draft_type,
+    )
+
+
+@router.post("/api/drafts/zhihu", response_model=DraftRecord)
+def create_zhihu_draft(request: ZhihuDraftCreateRequest) -> DraftRecord:
+    generated = generate_zhihu_answer(request)
+    return DraftService().save_zhihu_answer(
         generated=generated,
         title=request.title,
         candidate_pool_id=request.candidate_pool_id,
@@ -173,6 +195,9 @@ def update_draft(draft_id: str, request: DraftUpdateRequest) -> DraftRecord:
             status=request.status,
             operator_note=request.operator_note,
             edited_text=request.edited_text,
+            published_url=request.published_url,
+            published_at=request.published_at,
+            performance_note=request.performance_note,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

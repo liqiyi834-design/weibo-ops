@@ -117,6 +117,34 @@ class GenerateCommentResponse(BaseModel):
     safety: SafetyResult
 
 
+class ZhihuAnswerOutput(BaseModel):
+    question_title: str
+    answer_title: str
+    opening_judgement: str
+    background_summary: str
+    core_argument: str
+    supporting_points: list[str] = Field(default_factory=list)
+    counter_arguments: list[str] = Field(default_factory=list)
+    risk_notes: list[str] = Field(default_factory=list)
+    answer_body: str
+    references: list[str] = Field(default_factory=list)
+
+
+class GenerateZhihuAnswerRequest(GenerateCommentRequest):
+    question_title: str | None = None
+
+
+class GenerateZhihuAnswerResponse(BaseModel):
+    topic: str
+    account_id: str = "today_direct"
+    style: str = "rational_critic"
+    fact_summary: FactSummary
+    topic_classification: TopicClassification
+    retrieved_knowledge: list[RetrievedKnowledge]
+    opinion: OpinionDraft
+    output: ZhihuAnswerOutput
+
+
 class TopicSelectionRequest(BaseModel):
     topics: list[HotTopic] = Field(default_factory=list)
     max_results: int = Field(default=5, ge=3, le=10)
@@ -216,9 +244,19 @@ class CandidateStatusUpdateRequest(BaseModel):
 
 
 DraftStatus = Literal["draft", "reviewed", "rejected", "published_manually"]
+DraftType = Literal["micro_comment", "zhihu_answer", "video_script"]
+DraftPlatform = Literal["weibo", "zhihu", "video", "other"]
 
 
 class DraftCreateRequest(GenerateCommentRequest):
+    candidate_pool_id: str | None = None
+    candidate_item_id: str | None = None
+    title: str | None = None
+    platform: DraftPlatform = "weibo"
+    draft_type: DraftType = "micro_comment"
+
+
+class ZhihuDraftCreateRequest(GenerateZhihuAnswerRequest):
     candidate_pool_id: str | None = None
     candidate_item_id: str | None = None
     title: str | None = None
@@ -228,6 +266,9 @@ class DraftUpdateRequest(BaseModel):
     status: DraftStatus | None = None
     operator_note: str | None = None
     edited_text: str | None = None
+    published_url: str | None = None
+    published_at: datetime | None = None
+    performance_note: str | None = None
 
 
 class DraftRecord(BaseModel):
@@ -236,15 +277,21 @@ class DraftRecord(BaseModel):
     topic: str
     account_id: str
     style: str
+    platform: DraftPlatform = "weibo"
+    draft_type: DraftType = "micro_comment"
     status: DraftStatus = "draft"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     candidate_pool_id: str | None = None
     candidate_item_id: str | None = None
     risk_level: Literal["low", "medium", "high", "blocked"] = "low"
-    generated: GenerateCommentResponse
+    generated: GenerateCommentResponse | None = None
+    zhihu_answer: GenerateZhihuAnswerResponse | None = None
     edited_text: str | None = None
     operator_note: str | None = None
+    published_url: str | None = None
+    published_at: datetime | None = None
+    performance_note: str | None = None
 
 
 class DraftSummary(BaseModel):
@@ -253,7 +300,10 @@ class DraftSummary(BaseModel):
     topic: str
     account_id: str
     style: str
+    platform: DraftPlatform = "weibo"
+    draft_type: DraftType = "micro_comment"
     status: DraftStatus
     risk_level: Literal["low", "medium", "high", "blocked"]
     created_at: datetime
     updated_at: datetime
+    published_url: str | None = None

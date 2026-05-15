@@ -321,12 +321,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-38 passed
+40 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的人工背景资料入库、递归 RAG 索引、知识库 API 和 Streamlit 入库入口改动。提交前必须确认：
+当前工作区包含尚未提交的知乎回答草稿 MVP 改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -336,7 +336,7 @@ python -m pytest tests -q -p no:cacheprovider
 建议提交信息：
 
 ```text
-实现Streamlit工作台与草稿箱
+实现知乎回答草稿MVP
 ```
 
 ## 重要经验与踩坑记录
@@ -557,10 +557,12 @@ output/drafts/
 
 推荐实现：
 
-- 新增 `ZhihuAnswerGenerator`，复用 `FactSummarizer`、`TopicClassifier`、RAG、`SafetyChecker`。
-- 草稿箱支持按 `platform` / `draft_type` 筛选。
-- Streamlit 在候选题或草稿入口增加“生成知乎回答”按钮。
-- 草稿箱支持记录人工发布链接、发布时间和复盘备注。
+- 已新增 `ZhihuAnswerGenerator`，复用 `FactSummarizer`、`TopicClassifier`、RAG、`OpinionGenerator` 和表达风格配置。
+- 已新增 API：`POST /api/zhihu/answer/generate`、`POST /api/drafts/zhihu`。
+- 草稿模型已新增 `platform`、`draft_type`、`published_url`、`published_at`、`performance_note`。
+- Streamlit 已在候选题草稿入口增加“生成知乎回答”按钮。
+- 草稿箱已支持展示知乎回答结构，并可记录人工发布链接和复盘备注。
+- 后续优化：草稿箱按 `platform` / `draft_type` 筛选。
 
 知乎选题适配：
 

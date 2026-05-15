@@ -149,3 +149,42 @@ def test_create_and_update_draft(monkeypatch):
     assert update_response.status_code == 200
     assert update_response.json()["status"] == "reviewed"
     assert update_response.json()["edited_text"] == "人工编辑正文"
+
+
+def test_create_zhihu_draft(monkeypatch):
+    test_root = Path(".rag_index") / f"api-zhihu-draft-test-{uuid4().hex}"
+    monkeypatch.setattr(routes, "DraftService", lambda: DraftService(root=test_root))
+    client = TestClient(app)
+
+    create_response = client.post(
+        "/api/drafts/zhihu",
+        json={
+            "title": "知乎测试回答",
+            "topic": "平台售后规则争议",
+            "question_title": "如何看待平台售后规则争议？",
+            "context_text": "公开信息显示，争议集中在规则解释和售后责任边界。",
+            "style": "rational_critic",
+            "emotion_level": 4,
+            "use_rag": False,
+            "candidate_pool_id": "pool-1",
+            "candidate_item_id": "item-1",
+        },
+    )
+    draft = create_response.json()
+
+    assert create_response.status_code == 200
+    assert draft["platform"] == "zhihu"
+    assert draft["draft_type"] == "zhihu_answer"
+    assert draft["zhihu_answer"]["output"]["answer_body"]
+
+    update_response = client.patch(
+        f"/api/drafts/{draft['id']}",
+        json={
+            "status": "published_manually",
+            "published_url": "https://www.zhihu.com/question/1/answer/2",
+            "performance_note": "人工记录数据。",
+        },
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["published_url"] == "https://www.zhihu.com/question/1/answer/2"

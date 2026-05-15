@@ -25,6 +25,7 @@ from app.services.topic_research_service import TopicResearchService
 from app.services.topic_selection_service import TopicSelectionService
 from app.llm.client import build_llm_client
 from app.schemas.comment import GenerateCommentRequest
+from app.schemas.comment import GenerateZhihuAnswerRequest
 
 
 DEFAULT_API_BASE_URL = os.getenv("API_BASE_URL", "")
@@ -70,6 +71,9 @@ class ApiClient:
 
     def create_draft(self, payload: dict) -> dict:
         return self.request("POST", "/api/drafts", json=payload)
+
+    def create_zhihu_draft(self, payload: dict) -> dict:
+        return self.request("POST", "/api/drafts/zhihu", json=payload)
 
     def list_drafts(self) -> list[dict]:
         return self.request("GET", "/api/drafts")
@@ -161,6 +165,19 @@ class LocalServiceClient:
         pipeline = GenerationPipeline(self.settings, llm)
         generated = pipeline.generate(GenerateCommentRequest(**payload))
         draft = self.draft_service.save(
+            generated=generated,
+            title=payload.get("title"),
+            candidate_pool_id=payload.get("candidate_pool_id"),
+            candidate_item_id=payload.get("candidate_item_id"),
+        )
+        return draft.model_dump(mode="json")
+
+    def create_zhihu_draft(self, payload: dict) -> dict:
+        from app.services.zhihu_answer_generator import ZhihuAnswerGenerator
+
+        llm = build_llm_client(self.settings)
+        generated = ZhihuAnswerGenerator(self.settings, llm).generate(GenerateZhihuAnswerRequest(**payload))
+        draft = self.draft_service.save_zhihu_answer(
             generated=generated,
             title=payload.get("title"),
             candidate_pool_id=payload.get("candidate_pool_id"),
@@ -483,7 +500,11 @@ def render_create_draft_from_candidate(api: ApiClient) -> None:
     context_text = st.text_area("补充背景/写作要求", value=default_context, height=140)
     use_rag = st.checkbox("启用 RAG 检索", value=True)
 
-    if st.button("生成并保存草稿", use_container_width=True):
+    col_weibo, col_zhihu = st.columns(2)
+    create_weibo = col_weibo.button("生成微博草稿", use_container_width=True)
+    create_zhihu = col_zhihu.button("生成知乎回答", use_container_width=True)
+
+    if create_weibo:
         payload = {
             "title": item["keyword"],
             "topic": item["keyword"],
@@ -500,6 +521,28 @@ def render_create_draft_from_candidate(api: ApiClient) -> None:
             with st.spinner("正在生成草稿并保存..."):
                 draft = api.create_draft(payload)
             st.success(f"草稿已保存：{draft['id']}")
+            render_draft_detail(draft)
+
+        run_action(action)
+
+    if create_zhihu:
+        payload = {
+            "title": item["keyword"],
+            "topic": item["keyword"],
+            "question_title": f"如何看待{item['keyword']}？",
+            "account_id": account_options[account_label],
+            "style": style_options[style_label],
+            "emotion_level": emotion_level,
+            "use_rag": use_rag,
+            "context_text": context_text,
+            "candidate_pool_id": pool_holder["id"],
+            "candidate_item_id": item["id"],
+        }
+
+        def action() -> None:
+            with st.spinner("正在生成知乎回答并保存..."):
+                draft = api.create_zhihu_draft(payload)
+            st.success(f"知乎回答草稿已保存：{draft['id']}")
             render_draft_detail(draft)
 
         run_action(action)
@@ -526,6 +569,8 @@ def render_draft_list(api: ApiClient) -> None:
             "标题": draft["title"],
             "话题": draft["topic"],
             "状态": draft["status"],
+            "平台": draft.get("platform", "weibo"),
+            "类型": draft.get("draft_type", "micro_comment"),
             "风险": draft["risk_level"],
             "风格": draft["style"],
             "更新时间": draft["updated_at"],
@@ -549,23 +594,46 @@ def render_draft_list(api: ApiClient) -> None:
 def render_draft_detail(draft: dict) -> None:
     st.markdown(f"**草稿 ID：** `{draft['id']}`")
     st.markdown(f"**话题：** {draft['topic']}")
-    st.markdown(f"**状态：** {draft['status']} | **风险：** {draft['risk_level']} | **风格：** {draft['style']}")
+    st.markdown(
+        f"**状态：** {draft['status']} | **平台：** {draft.get('platform', 'weibo')} | "
+        f"**类型：** {draft.get('draft_type', 'micro_comment')} | **风险：** {draft['risk_level']} | **风格：** {draft['style']}"
+    )
 
-    output = draft["generated"]["output"]
-    st.markdown("#### 推荐正文")
-    st.write(output.get("short_comment", ""))
-    with st.expander("其他版本"):
-        st.markdown("**一句话：**")
-        st.write(output.get("one_liner", ""))
-        st.markdown("**情绪版：**")
-        st.write(output.get("emotional_version", ""))
-        st.markdown("**理性版：**")
-        st.write(output.get("rational_version", ""))
-        st.markdown("**阴阳怪气版：**")
-        st.write(output.get("ironic_version", ""))
-        st.markdown("**评论区回复：**")
-        for reply in output.get("comment_replies", []):
-            st.write(f"- {reply}")
+    if draft.get("draft_type") == "zhihu_answer":
+        output = draft["zhihu_answer"]["output"]
+        st.markdown("#### 知乎回答")
+        st.markdown(f"**问题：** {output.get('question_title', '')}")
+        st.markdown(f"**标题：** {output.get('answer_title', '')}")
+        st.write(output.get("answer_body", ""))
+        with st.expander("结构化要点"):
+            st.markdown("**开场判断：**")
+            st.write(output.get("opening_judgement", ""))
+            st.markdown("**背景摘要：**")
+            st.write(output.get("background_summary", ""))
+            st.markdown("**核心论点：**")
+            st.write(output.get("core_argument", ""))
+            st.markdown("**支撑点：**")
+            for point in output.get("supporting_points", []):
+                st.write(f"- {point}")
+            st.markdown("**风险提示：**")
+            for note in output.get("risk_notes", []):
+                st.write(f"- {note}")
+    else:
+        output = draft["generated"]["output"]
+        st.markdown("#### 推荐正文")
+        st.write(output.get("short_comment", ""))
+        with st.expander("其他版本"):
+            st.markdown("**一句话：**")
+            st.write(output.get("one_liner", ""))
+            st.markdown("**情绪版：**")
+            st.write(output.get("emotional_version", ""))
+            st.markdown("**理性版：**")
+            st.write(output.get("rational_version", ""))
+            st.markdown("**阴阳怪气版：**")
+            st.write(output.get("ironic_version", ""))
+            st.markdown("**评论区回复：**")
+            for reply in output.get("comment_replies", []):
+                st.write(f"- {reply}")
 
     if draft.get("edited_text"):
         st.markdown("#### 人工编辑版")
@@ -573,6 +641,11 @@ def render_draft_detail(draft: dict) -> None:
     if draft.get("operator_note"):
         st.markdown("#### 人工备注")
         st.write(draft["operator_note"])
+    if draft.get("published_url"):
+        st.markdown("#### 人工发布记录")
+        st.write(draft["published_url"])
+        if draft.get("performance_note"):
+            st.write(draft["performance_note"])
 
 
 def render_draft_editor(api: ApiClient, draft: dict) -> None:
@@ -588,14 +661,18 @@ def render_draft_editor(api: ApiClient, draft: dict) -> None:
         note = st.text_input("审核备注", value=draft.get("operator_note") or "")
     edited_text = st.text_area(
         "人工编辑正文",
-        value=draft.get("edited_text") or draft["generated"]["output"].get("short_comment", ""),
+        value=draft.get("edited_text") or draft_display_text(draft),
         height=160,
     )
+    published_url = st.text_input("人工发布链接", value=draft.get("published_url") or "")
+    performance_note = st.text_area("发布数据/复盘备注", value=draft.get("performance_note") or "", height=90)
     if st.button("保存草稿修改", use_container_width=True):
         payload = {
             "status": status,
             "operator_note": note,
             "edited_text": edited_text,
+            "published_url": published_url or None,
+            "performance_note": performance_note or None,
         }
 
         def action() -> None:
@@ -605,6 +682,12 @@ def render_draft_editor(api: ApiClient, draft: dict) -> None:
             render_draft_detail(updated)
 
         run_action(action)
+
+
+def draft_display_text(draft: dict) -> str:
+    if draft.get("draft_type") == "zhihu_answer":
+        return draft.get("zhihu_answer", {}).get("output", {}).get("answer_body", "")
+    return draft.get("generated", {}).get("output", {}).get("short_comment", "")
 
 
 def render_config(api: ApiClient) -> None:
