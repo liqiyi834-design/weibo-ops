@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 
 from mcp_server.tools import (
     generate_comment_tool,
+    get_ent_topics_tool,
     get_hot_topics_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
@@ -38,6 +39,12 @@ def select_comment_topics(
         enrich_metrics=enrich_metrics,
         research_limit=research_limit,
     )
+
+
+@mcp.tool
+def get_ent_topics(limit: int = 20) -> dict:
+    """Fetch current Weibo entertainment ranking topics, falling back to mock topics."""
+    return get_ent_topics_tool(limit=limit)
 
 
 @mcp.tool

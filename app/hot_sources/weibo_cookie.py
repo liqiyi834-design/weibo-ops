@@ -16,10 +16,12 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
     def __init__(
         self,
         cookie: str | None,
+        cate: str = "realtimehot",
         timeout: float = 10.0,
         fallback: BaseHotSearchProvider | None = None,
     ):
         self.cookie = cookie
+        self.cate = cate
         self.timeout = timeout
         self.fallback = fallback or MockHotSearchProvider()
 
@@ -29,7 +31,7 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
                 raise ValueError("WEIBO_COOKIE is not configured.")
             response = httpx.get(
                 self.endpoint,
-                params={"cate": "realtimehot"},
+                params={"cate": self.cate},
                 timeout=self.timeout,
                 trust_env=False,
                 follow_redirects=True,

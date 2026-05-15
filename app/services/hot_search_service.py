@@ -14,6 +14,18 @@ class HotSearchService:
         visible = VisibleCaptureHotSearchProvider(fallback=mock)
         provider = WeiboCookieHotSearchProvider(
             cookie=self.settings.weibo_cookie,
+            cate="realtimehot",
+            timeout=self.settings.request_timeout_seconds,
+            fallback=visible,
+        )
+        return provider.fetch(limit=limit)
+
+    def get_weibo_ent_topics(self, limit: int = 20) -> HotSearchResponse:
+        mock = MockHotSearchProvider()
+        visible = VisibleCaptureHotSearchProvider(fallback=mock)
+        provider = WeiboCookieHotSearchProvider(
+            cookie=self.settings.weibo_cookie,
+            cate="entrank",
             timeout=self.settings.request_timeout_seconds,
             fallback=visible,
         )

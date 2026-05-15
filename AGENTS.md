@@ -299,6 +299,14 @@ tests/test_draft_service.py
 python -m pytest tests -q -p no:cacheprovider
 ```
 
+## 2026-05-14 补充交接
+
+- 已新增文娱榜抓取能力：`HotSearchService.get_weibo_ent_topics()`，底层通过微博 `top/summary?cate=entrank`，沿用本地 `.env` 的 `WEIBO_COOKIE`，不写入代码。
+- 已新增 MCP 工具：`get_ent_topics`，用于同步获取微博文娱榜；`get_hot_topics` 仍用于实时热搜榜。
+- 当前验证：`py -m pytest tests -q -p no:cacheprovider`，结果 `28 passed`。
+- 运营采样结论：热搜内高评论博文通常不是单纯复述事实，而是给评论区留下可站队的缝，例如“谁更委屈/谁该让步/是不是营销/是不是过度解读/你遇到会怎么选”。
+- 2026-05-14 晚间用 Cookie 采样过当前热搜/文娱榜：双榜重合包括 `给阿嬷的情书女主官宣入行`、`方媛坚持要住男生单人间`、`爸爸当家5嘉宾阵容`、`黄景瑜微博改名`、`宋亚轩和张杰女儿撞小名` 等；评论区最强互动来自生活资源冲突、粉圈站队、综艺人设评价、外交大事件中的细节解读。
+
 结果：
 
 ```text

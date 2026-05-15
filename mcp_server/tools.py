@@ -113,6 +113,12 @@ def get_hot_topics_tool(limit: int = 20, settings: Settings | None = None) -> di
     return response.model_dump()
 
 
+def get_ent_topics_tool(limit: int = 20, settings: Settings | None = None) -> dict:
+    active_settings = settings or get_settings()
+    response = HotSearchService(active_settings).get_weibo_ent_topics(limit=limit)
+    return response.model_dump()
+
+
 def select_comment_topics_tool(
     topics: list[dict] | None = None,
     max_results: int = 5,

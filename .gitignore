@@ -18,6 +18,7 @@ pytest_tmp/
 .git-store-template-empty/
 repo_store/
 repo_store_template_empty/
+git_upload_repo/
 
 # OS/editor noise
 Thumbs.db
