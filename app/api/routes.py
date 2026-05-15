@@ -10,7 +10,7 @@ from app.schemas.comment import DraftCreateRequest, DraftRecord, DraftSummary, D
 from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
 from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerResponse, ZhihuDraftCreateRequest
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
-from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse
+from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse, KnowledgeRecord, KnowledgeRecordSummary
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
@@ -234,6 +234,29 @@ def rebuild_knowledge() -> dict[str, int | bool | str]:
 def ingest_knowledge(request: KnowledgeIngestRequest) -> KnowledgeIngestResponse:
     settings = get_settings()
     return KnowledgeIngestionService(settings).ingest(request)
+
+
+@router.get("/api/knowledge/inbox", response_model=list[KnowledgeRecordSummary])
+def list_knowledge_records(
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    limit: int = 50,
+) -> list[KnowledgeRecordSummary]:
+    settings = get_settings()
+    return KnowledgeIngestionService(settings).list_records(
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+        limit=limit,
+    )
+
+
+@router.get("/api/knowledge/inbox/{record_id}", response_model=KnowledgeRecord)
+def get_knowledge_record(record_id: str) -> KnowledgeRecord:
+    settings = get_settings()
+    try:
+        return KnowledgeIngestionService(settings).get_record(record_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/api/knowledge/search", response_model=list[RetrievedKnowledge])

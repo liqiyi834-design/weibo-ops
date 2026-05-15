@@ -72,6 +72,25 @@ class KnowledgeIngestResponse(BaseModel):
     rebuild_stats: dict[str, int | bool | str] | None = None
 
 
+class KnowledgeRecordSummary(BaseModel):
+    id: str
+    topic: str
+    path: str
+    source_url: str | None = None
+    source_title: str | None = None
+    credibility: Literal["unknown", "low", "medium", "high"] = "unknown"
+    needs_review: bool = True
+    candidate_pool_id: str | None = None
+    candidate_item_id: str | None = None
+    created_at: datetime | None = None
+    preview: str = ""
+
+
+class KnowledgeRecord(KnowledgeRecordSummary):
+    operator_note: str | None = None
+    content: str = ""
+
+
 class OpinionDraft(BaseModel):
     core_conflict: str
     critique_angles: list[str] = Field(default_factory=list)

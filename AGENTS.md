@@ -144,6 +144,7 @@ topic + context_text
 - 支持查看候选池列表与详情。
 - 支持人工多选并批量标记候选项状态：`candidate`、`selected`、`skipped`、`researched`。
 - 支持对 `selected` / `researched` 候选题人工粘贴背景资料、来源 URL、可信度和备注，保存到知识库并重建 RAG。
+- 支持在候选池审核页按候选题查看已入库背景资料列表和详情。
 - 支持从 `selected` 候选题生成草稿并保存到草稿箱。
 - 支持查看草稿、人工编辑正文、更新审核状态。
 - 支持查看账号配置与表达风格。
@@ -244,9 +245,10 @@ chunk_count: 21
 
 - 新增 `app/services/knowledge_ingestion_service.py`。
 - 新增 API：`POST /api/knowledge/ingest`。
+- 新增 API：`GET /api/knowledge/inbox`、`GET /api/knowledge/inbox/{record_id}`，可查看入库记录列表和详情。
 - 默认保存到 `app/knowledge/inbox/`，记录 topic、source_url、source_title、credibility、needs_review、candidate_pool_id、candidate_item_id、created_at。
 - 可保存后自动调用 `KnowledgeService.rebuild()`。
-- Streamlit 候选池审核页已接入人工背景资料入库入口。
+- Streamlit 候选池审核页已接入人工背景资料入库入口，并可查看同一候选题已入库的背景资料正文。
 - 当前只做人审后的手动入库，不自动搜索、不自动抓取网页。
 
 ### MCP 最小版
@@ -310,6 +312,12 @@ tests/test_knowledge_ingestion.py
 
 ```powershell
 python -m pytest tests -q -p no:cacheprovider
+```
+
+当前最新结果：
+
+```text
+43 passed
 ```
 
 ## 2026-05-14 补充交接
@@ -597,8 +605,9 @@ output/drafts/
 - 这项能力必须只采集公开信息，不读取私信、登录态隐私、付费墙或敏感账号信息。
 - 资料入库前要保存来源 URL、抓取时间、摘要、可信度、是否需要人工确认。
 - 未核实信息不得写成确定事实，应该标注“待核验”。
-- 已完成手动入库第一版：`app/knowledge/inbox/`、`app/services/knowledge_ingestion_service.py`、`POST /api/knowledge/ingest`。
+- 已完成手动入库与查看第一版：`app/knowledge/inbox/`、`app/services/knowledge_ingestion_service.py`、`POST /api/knowledge/ingest`、`GET /api/knowledge/inbox`、`GET /api/knowledge/inbox/{record_id}`。
 - 已支持候选池审核页从 `selected` / `researched` 话题粘贴背景资料并重建 RAG。
+- 已支持候选池审核页查看同一候选题已入库的背景资料列表、来源、可信度、摘要和正文详情。
 - 已支持 RAG 递归索引 `app/knowledge/**/*.md`。
 - 推荐后续新增服务：`app/services/research_service.py`。
 - 推荐新增 MCP 工具：`research_topic`、`ingest_topic_research`。

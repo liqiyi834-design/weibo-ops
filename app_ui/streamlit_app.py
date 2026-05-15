@@ -87,6 +87,22 @@ class ApiClient:
     def ingest_knowledge(self, payload: dict) -> dict:
         return self.request("POST", "/api/knowledge/ingest", json=payload)
 
+    def list_knowledge_records(
+        self,
+        candidate_pool_id: str | None = None,
+        candidate_item_id: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        params = {"limit": limit}
+        if candidate_pool_id:
+            params["candidate_pool_id"] = candidate_pool_id
+        if candidate_item_id:
+            params["candidate_item_id"] = candidate_item_id
+        return self.request("GET", "/api/knowledge/inbox", params=params)
+
+    def get_knowledge_record(self, record_id: str) -> dict:
+        return self.request("GET", f"/api/knowledge/inbox/{record_id}")
+
 
 class LocalServiceClient:
     def __init__(self):
@@ -203,6 +219,22 @@ class LocalServiceClient:
     def ingest_knowledge(self, payload: dict) -> dict:
         result = KnowledgeIngestionService(self.settings).ingest(KnowledgeIngestRequest(**payload))
         return result.model_dump(mode="json")
+
+    def list_knowledge_records(
+        self,
+        candidate_pool_id: str | None = None,
+        candidate_item_id: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        records = KnowledgeIngestionService(self.settings).list_records(
+            candidate_pool_id=candidate_pool_id,
+            candidate_item_id=candidate_item_id,
+            limit=limit,
+        )
+        return [record.model_dump(mode="json") for record in records]
+
+    def get_knowledge_record(self, record_id: str) -> dict:
+        return KnowledgeIngestionService(self.settings).get_record(record_id).model_dump(mode="json")
 
 
 def main() -> None:
@@ -394,6 +426,8 @@ def render_knowledge_ingestion(api: ApiClient, pool: dict) -> None:
     item_label = st.selectbox("话题", list(item_options.keys()), key=f"knowledge_item_{pool['id']}")
     item = item_options[item_label]
 
+    render_knowledge_records(api, pool["id"], item["id"])
+
     with st.form(f"knowledge_ingest_{pool['id']}_{item['id']}"):
         source_url = st.text_input("来源 URL", value=item.get("url") or "")
         source_title = st.text_input("来源标题", value="")
@@ -430,10 +464,73 @@ def render_knowledge_ingestion(api: ApiClient, pool: dict) -> None:
         with st.spinner("正在保存背景资料并更新知识库..."):
             result = api.ingest_knowledge(payload)
         st.success(f"背景资料已入库：{result['path']}")
+        st.session_state.pop(f"knowledge_records_{pool['id']}_{item['id']}", None)
         if result.get("rebuild_stats"):
             st.json(result["rebuild_stats"])
 
     run_action(action)
+
+
+def render_knowledge_records(api: ApiClient, pool_id: str, item_id: str) -> None:
+    cache_key = f"knowledge_records_{pool_id}_{item_id}"
+    col_refresh, col_hint = st.columns([1, 4])
+    with col_refresh:
+        if st.button("刷新资料", key=f"refresh_{cache_key}", use_container_width=True):
+            st.session_state.pop(cache_key, None)
+    with col_hint:
+        st.caption("已入库背景资料会显示在这里，方便生成草稿前核对。")
+
+    def load_records() -> list[dict]:
+        if cache_key not in st.session_state:
+            st.session_state[cache_key] = api.list_knowledge_records(
+                candidate_pool_id=pool_id,
+                candidate_item_id=item_id,
+                limit=20,
+            )
+        return st.session_state[cache_key]
+
+    records: list[dict] = []
+    run_action(lambda: records.extend(load_records()))
+    if not records:
+        st.info("这个话题还没有入库背景资料。")
+        return
+
+    rows = [
+        {
+            "入库时间": record.get("created_at") or "",
+            "话题": record["topic"],
+            "可信度": record.get("credibility", "unknown"),
+            "待复核": record.get("needs_review", True),
+            "来源": record.get("source_title") or record.get("source_url") or "manual input",
+            "摘要": record.get("preview", ""),
+            "record_id": record["id"],
+        }
+        for record in records
+    ]
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    record_options = {
+        f"{record.get('created_at') or ''} | {record['topic']} | {record['id']}": record["id"]
+        for record in records
+    }
+    selected_record = st.selectbox("查看入库资料", list(record_options.keys()), key=f"select_{cache_key}")
+    record_id = record_options[selected_record]
+
+    record_holder: dict[str, Any] = {}
+    run_action(lambda: record_holder.update(api.get_knowledge_record(record_id)))
+    if not record_holder:
+        return
+    with st.expander("入库资料详情", expanded=False):
+        st.markdown(f"**资料 ID：** `{record_holder['id']}`")
+        if record_holder.get("source_url"):
+            st.markdown(f"**来源 URL：** {record_holder['source_url']}")
+        if record_holder.get("source_title"):
+            st.markdown(f"**来源标题：** {record_holder['source_title']}")
+        if record_holder.get("operator_note"):
+            st.markdown("**人工备注：**")
+            st.write(record_holder["operator_note"])
+        st.markdown("**正文：**")
+        st.write(record_holder.get("content", ""))
 
 
 def render_drafts(api: ApiClient) -> None:

@@ -53,6 +53,38 @@ def test_knowledge_loader_reads_inbox_recursively():
     assert chunks[0].source == "inbox/topic.md"
 
 
+def test_knowledge_ingestion_records_can_be_listed_and_read():
+    workspace = Path(".rag_index") / f"knowledge-record-list-test-{uuid4().hex}"
+    settings = Settings(
+        OPENAI_API_KEY=None,
+        KNOWLEDGE_DIR=workspace / "knowledge",
+        RAG_INDEX_PATH=workspace / "index.json",
+    )
+    service = KnowledgeIngestionService(settings)
+    result = service.ingest(
+        KnowledgeIngestRequest(
+            topic="平台售后规则争议",
+            source_url="https://example.com/report",
+            source_title="公开报道",
+            credibility="high",
+            content="公开资料显示，争议集中在售后规则解释和商家责任边界。",
+            candidate_pool_id="pool-1",
+            candidate_item_id="item-1",
+            operator_note="人工确认过来源。",
+            rebuild_index=False,
+        )
+    )
+
+    records = service.list_records(candidate_pool_id="pool-1", candidate_item_id="item-1")
+    detail = service.get_record(Path(result.path).stem)
+
+    assert len(records) == 1
+    assert records[0].source_title == "公开报道"
+    assert records[0].preview
+    assert detail.content == "公开资料显示，争议集中在售后规则解释和商家责任边界。"
+    assert detail.operator_note == "人工确认过来源。"
+
+
 def test_ingested_knowledge_can_be_retrieved():
     workspace = Path(".rag_index") / f"knowledge-ingest-retrieve-test-{uuid4().hex}"
     settings = Settings(
@@ -104,3 +136,38 @@ def test_knowledge_ingest_api(monkeypatch):
     assert body["success"] is True
     assert Path(body["path"]).exists()
     assert body["rebuild_stats"]["chunk_count"] >= 1
+
+
+def test_knowledge_inbox_api(monkeypatch):
+    workspace = Path(".rag_index") / f"api-knowledge-inbox-test-{uuid4().hex}"
+    settings = Settings(
+        OPENAI_API_KEY=None,
+        KNOWLEDGE_DIR=workspace / "knowledge",
+        RAG_INDEX_PATH=workspace / "index.json",
+    )
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+    client = TestClient(app)
+
+    ingest_response = client.post(
+        "/api/knowledge/ingest",
+        json={
+            "topic": "平台售后规则争议",
+            "content": "公开资料显示，争议集中在售后规则解释和商家责任边界。",
+            "source_title": "公开报道",
+            "candidate_pool_id": "pool-1",
+            "candidate_item_id": "item-1",
+            "rebuild_index": False,
+        },
+    )
+    record_id = Path(ingest_response.json()["path"]).stem
+
+    list_response = client.get(
+        "/api/knowledge/inbox",
+        params={"candidate_pool_id": "pool-1", "candidate_item_id": "item-1"},
+    )
+    detail_response = client.get(f"/api/knowledge/inbox/{record_id}")
+
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["id"] == record_id
+    assert detail_response.status_code == 200
+    assert "售后规则解释" in detail_response.json()["content"]
