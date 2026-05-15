@@ -140,7 +140,8 @@ topic + context_text
 - 通过 `API_BASE_URL` 调用 FastAPI，不复制业务逻辑。
 - 支持生成今日热搜候选池。
 - 支持查看候选池列表与详情。
-- 支持人工标记候选项状态：`candidate`、`selected`、`skipped`、`researched`。
+- 支持人工多选并批量标记候选项状态：`candidate`、`selected`、`skipped`、`researched`。
+- 支持对 `selected` / `researched` 候选题人工粘贴背景资料、来源 URL、可信度和备注，保存到知识库并重建 RAG。
 - 支持从 `selected` 候选题生成草稿并保存到草稿箱。
 - 支持查看草稿、人工编辑正文、更新审核状态。
 - 支持查看账号配置与表达风格。
@@ -222,7 +223,7 @@ API key 只放 `.env`，不要提交。
 
 当前会索引：
 
-- `app/knowledge/*.md`
+- `app/knowledge/**/*.md`
 - `04_人设与风格规则.md`
 - `06_草稿生成提示词.md`
 - `08_高热博文公开样本研究.md`
@@ -236,6 +237,15 @@ API key 只放 `.env`，不要提交。
 document_count: 9
 chunk_count: 21
 ```
+
+已实现人工背景资料入库第一版：
+
+- 新增 `app/services/knowledge_ingestion_service.py`。
+- 新增 API：`POST /api/knowledge/ingest`。
+- 默认保存到 `app/knowledge/inbox/`，记录 topic、source_url、source_title、credibility、needs_review、candidate_pool_id、candidate_item_id、created_at。
+- 可保存后自动调用 `KnowledgeService.rebuild()`。
+- Streamlit 候选池审核页已接入人工背景资料入库入口。
+- 当前只做人审后的手动入库，不自动搜索、不自动抓取网页。
 
 ### MCP 最小版
 
@@ -291,6 +301,7 @@ tests/test_topic_selection.py
 tests/test_topic_research.py
 tests/test_style_service.py
 tests/test_draft_service.py
+tests/test_knowledge_ingestion.py
 ```
 
 已验证：
@@ -310,12 +321,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-34 passed
+38 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的 JSON 重试逻辑和候选池批量选择入口改动。提交前必须确认：
+当前工作区包含尚未提交的人工背景资料入库、递归 RAG 索引、知识库 API 和 Streamlit 入库入口改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -506,6 +517,62 @@ output/drafts/
 - 前端展示账号切换和风格选择。
 - 逐步把内部命名从 `persona` 迁移到 `style`，保留兼容期。
 
+### P2B：多平台内容草稿类型与知乎 MVP
+
+用户新增方向：
+
+```text
+多平台运营
+-> 不只是微博短锐评
+-> 支持知乎等平台的内容草稿生产
+-> 人工审核、人工发布、人工记录链接和数据
+```
+
+产品定位：
+
+- 这是“多平台内容生产与复盘”，不是“多平台自动发布/自动互动”。
+- 第一阶段优先做知乎 MVP，因为知乎更适合解释型、论证型、长回答内容。
+- 微博草稿与知乎回答应共享选题、背景资料、RAG 和安全审查，但使用不同生成器和不同输出结构。
+
+推荐新增字段：
+
+- `platform`: `weibo` / `zhihu` / `video` / 后续平台。
+- `draft_type`: `micro_comment` / `zhihu_answer` / `video_script`。
+- `published_url`: 人工发布后的链接。
+- `published_at`: 人工发布时间。
+- `performance_note`: 人工记录的数据和复盘备注。
+
+知乎回答推荐结构：
+
+- `question_title`
+- `answer_title`
+- `opening_judgement`
+- `background_summary`
+- `core_argument`
+- `supporting_points`
+- `counter_arguments`
+- `risk_notes`
+- `answer_body`
+- `references`
+
+推荐实现：
+
+- 新增 `ZhihuAnswerGenerator`，复用 `FactSummarizer`、`TopicClassifier`、RAG、`SafetyChecker`。
+- 草稿箱支持按 `platform` / `draft_type` 筛选。
+- Streamlit 在候选题或草稿入口增加“生成知乎回答”按钮。
+- 草稿箱支持记录人工发布链接、发布时间和复盘备注。
+
+知乎选题适配：
+
+- 适合品牌、公关、平台规则、消费、职场、社会观察和“如何看待”类问题。
+- 不适合纯情绪宣泄、未核实爆料、短平快吃瓜和强攻击个人的内容。
+
+实现边界：
+
+- 不自动发布知乎回答。
+- 不自动评论、点赞、关注、私信。
+- 不批量运营账号，不做矩阵号或绕过平台限制。
+
 ### P3：知识库自动学习与背景资料入库
 
 用户新增目标：
@@ -524,10 +591,12 @@ output/drafts/
 - 这项能力必须只采集公开信息，不读取私信、登录态隐私、付费墙或敏感账号信息。
 - 资料入库前要保存来源 URL、抓取时间、摘要、可信度、是否需要人工确认。
 - 未核实信息不得写成确定事实，应该标注“待核验”。
-- 推荐新增目录：`app/knowledge/inbox/` 或 `app/knowledge/topics/`。
-- 推荐新增服务：`app/services/research_service.py`、`app/services/knowledge_ingestion_service.py`。
+- 已完成手动入库第一版：`app/knowledge/inbox/`、`app/services/knowledge_ingestion_service.py`、`POST /api/knowledge/ingest`。
+- 已支持候选池审核页从 `selected` / `researched` 话题粘贴背景资料并重建 RAG。
+- 已支持 RAG 递归索引 `app/knowledge/**/*.md`。
+- 推荐后续新增服务：`app/services/research_service.py`。
 - 推荐新增 MCP 工具：`research_topic`、`ingest_topic_research`。
-- 推荐新增 API：`POST /api/research/topic`、`POST /api/knowledge/ingest`。
+- 推荐后续新增 API：`POST /api/research/topic`。
 - 入库后调用现有 `KnowledgeService.rebuild()` 或后续增量索引。
 - 自动搜索需要明确来源白名单/黑名单、请求频率和失败 fallback，避免把低质搬运内容污染 RAG。
 
@@ -549,9 +618,20 @@ get_hot_topics
 
 后续清洗待办：
 
+- 抽象多平台 `HotTopicProvider` 接口，统一不同平台热榜读取结果。
+- 将现有微博热搜实现迁移为 `weibo` provider，保持现有 API 行为兼容。
+- API 后续支持 `platform=weibo`、`platform=all` 或指定多个平台。
+- 候选池中保留来源平台、来源链接、原始排名和平台热度字段。
+- 第二个平台优先选择公开、低风险、无需账号操作的来源，例如百度热搜、知乎热榜或 B 站热榜。
+- 后续支持跨平台同题聚合：同一事件出现在多个平台时合并展示，并把“跨平台讨论广度”作为选题参考因素。
 - 修复 `hot_value` 偶尔混入分类词的问题，例如 `综艺 126022`。
 - 根据运营策略决定是否过滤置顶、政务、低评论空间话题。
 - 增加热度字段解析测试。
+
+多平台边界：
+
+- 只做多平台选题、热榜观察和公开背景资料整理。
+- 不做多平台自动发布、自动评论、自动点赞、自动转发、私信、关注、批量养号或绕过平台限制。
 
 ### P5：自动化任务
 
@@ -566,7 +646,78 @@ get_hot_topics
 
 后续可以结合 Codex automations 做定时任务。
 
-### P6：RAG 升级
+### P6：AI 视频创意与提示词包产线
+
+用户新增方向：
+
+```text
+低成本 / 低质量 AI 生成视频
+-> 不以热点为唯一出发点
+-> 通过主题、栏目、风格、爆款结构和模型能力生成视频创意
+-> 输出脚本文案、分镜稿、关键帧提示词、视频生成提示词、封面字和发布文案
+-> 人工选择和制作
+```
+
+产品定位：
+
+- 这是独立于热点锐评的第二条内容产线，不复用“热搜候选池”的产品逻辑。
+- 核心不是自动生成视频，而是生成可供人工筛选和投喂视频工具的“创意与提示词资产包”。
+- 适合先人工使用可灵、即梦、Runway、Sora 等视频工具试效果，后续再评估是否接 API。
+
+推荐工作流：
+
+```text
+选择账号 / 栏目 / 题材方向 / 表达风格
+-> AI 生成 10 个视频创意
+-> 人工选择 1-3 个
+-> 生成脚本文案 + 分镜稿 + 视频提示词包
+-> 人工修改
+-> 标记为可制作 / 已制作 / 废弃
+```
+
+推荐新增模型：
+
+- `CreativeIdeaPool`
+- `CreativeIdea`
+- `VideoScriptDraft`
+- `VideoPromptPack`
+
+推荐状态：
+
+- `idea`
+- `selected`
+- `scripted`
+- `prompted`
+- `produced`
+- `discarded`
+
+推荐输出字段：
+
+- `video_concept`
+- `target_platform`
+- `duration_seconds`
+- `style`
+- `script_copy`
+- `shot_list`
+- `image_prompts`
+- `video_prompts`
+- `negative_prompts`
+- `caption`
+- `title_options`
+- `cover_text`
+- `risk_notes`
+- `production_notes`
+
+实现边界：
+
+- 不自动发布视频。
+- 不自动批量搬运素材。
+- 不生成仿冒真人、侵犯肖像或误导性真实事件视频。
+- 对新闻、公共事件、真人相关内容必须保留事实核验和人工审核。
+
+优先级建议：P6，先完成热点候选池、知识库和多平台 Provider 后再进入实现。
+
+### P7：RAG 升级
 
 当前 RAG 是本地 hash embedding。后续可以考虑：
 

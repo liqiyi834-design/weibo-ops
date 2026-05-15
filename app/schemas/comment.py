@@ -50,6 +50,28 @@ class RetrievedKnowledge(BaseModel):
     score: float | None = None
 
 
+class KnowledgeIngestRequest(BaseModel):
+    topic: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+    source_url: str | None = None
+    source_title: str | None = None
+    credibility: Literal["unknown", "low", "medium", "high"] = "unknown"
+    needs_review: bool = True
+    candidate_pool_id: str | None = None
+    candidate_item_id: str | None = None
+    operator_note: str | None = None
+    rebuild_index: bool = True
+
+
+class KnowledgeIngestResponse(BaseModel):
+    success: bool = True
+    topic: str
+    path: str
+    source_url: str | None = None
+    needs_review: bool = True
+    rebuild_stats: dict[str, int | bool | str] | None = None
+
+
 class OpinionDraft(BaseModel):
     core_conflict: str
     critique_angles: list[str] = Field(default_factory=list)

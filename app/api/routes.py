@@ -9,10 +9,12 @@ from app.schemas.comment import CandidateStatusUpdateRequest
 from app.schemas.comment import DraftCreateRequest, DraftRecord, DraftSummary, DraftUpdateRequest
 from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
+from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
+from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.knowledge_service import KnowledgeService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
@@ -201,6 +203,12 @@ def accounts() -> dict:
 def rebuild_knowledge() -> dict[str, int | bool | str]:
     settings = get_settings()
     return KnowledgeService(settings).rebuild()
+
+
+@router.post("/api/knowledge/ingest", response_model=KnowledgeIngestResponse)
+def ingest_knowledge(request: KnowledgeIngestRequest) -> KnowledgeIngestResponse:
+    settings = get_settings()
+    return KnowledgeIngestionService(settings).ingest(request)
 
 
 @router.post("/api/knowledge/search", response_model=list[RetrievedKnowledge])

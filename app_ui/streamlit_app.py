@@ -14,10 +14,12 @@ if str(ROOT_DIR) not in sys.path:
 
 from app.core.config import get_settings
 from app.schemas.comment import HotTopic
+from app.schemas.comment import KnowledgeIngestRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
+from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_selection_service import TopicSelectionService
@@ -77,6 +79,9 @@ class ApiClient:
 
     def update_draft(self, draft_id: str, payload: dict) -> dict:
         return self.request("PATCH", f"/api/drafts/{draft_id}", json=payload)
+
+    def ingest_knowledge(self, payload: dict) -> dict:
+        return self.request("POST", "/api/knowledge/ingest", json=payload)
 
 
 class LocalServiceClient:
@@ -177,6 +182,10 @@ class LocalServiceClient:
             edited_text=payload.get("edited_text"),
         )
         return draft.model_dump(mode="json")
+
+    def ingest_knowledge(self, payload: dict) -> dict:
+        result = KnowledgeIngestionService(self.settings).ingest(KnowledgeIngestRequest(**payload))
+        return result.model_dump(mode="json")
 
 
 def main() -> None:
@@ -293,6 +302,7 @@ def render_candidate_pools(api: ApiClient) -> None:
 
     render_pool_detail(pool_holder)
     render_status_editor(api, pool_holder)
+    render_knowledge_ingestion(api, pool_holder)
 
 
 def render_pool_detail(pool: dict) -> None:
@@ -348,6 +358,62 @@ def render_status_editor(api: ApiClient, pool: dict) -> None:
             render_pool_detail(updated_pool)
 
         run_action(action)
+
+
+def render_knowledge_ingestion(api: ApiClient, pool: dict) -> None:
+    st.markdown("### 背景资料入库")
+    selected_items = [item for item in pool["items"] if item["status"] in {"selected", "researched"}]
+    if not selected_items:
+        st.info("先把候选话题标记为 selected，再补充背景资料。")
+        return
+
+    item_options = {
+        f"{index + 1}. {item['keyword']} ({item['status']})": item
+        for index, item in enumerate(selected_items)
+    }
+    item_label = st.selectbox("话题", list(item_options.keys()), key=f"knowledge_item_{pool['id']}")
+    item = item_options[item_label]
+
+    with st.form(f"knowledge_ingest_{pool['id']}_{item['id']}"):
+        source_url = st.text_input("来源 URL", value=item.get("url") or "")
+        source_title = st.text_input("来源标题", value="")
+        credibility = st.selectbox("可信度", ["unknown", "medium", "high", "low"], index=0)
+        content = st.text_area("背景资料/摘要/事实点", height=180)
+        operator_note = st.text_input("人工备注", value="")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            needs_review = st.checkbox("需要后续核验", value=True)
+        with col_b:
+            rebuild_index = st.checkbox("保存后重建 RAG", value=True)
+        submitted = st.form_submit_button("保存到知识库", use_container_width=True)
+
+    if not submitted:
+        return
+    if not content.strip():
+        st.warning("请先填写背景资料内容。")
+        return
+
+    payload = {
+        "topic": item["keyword"],
+        "content": content,
+        "source_url": source_url or None,
+        "source_title": source_title or None,
+        "credibility": credibility,
+        "needs_review": needs_review,
+        "candidate_pool_id": pool["id"],
+        "candidate_item_id": item["id"],
+        "operator_note": operator_note or None,
+        "rebuild_index": rebuild_index,
+    }
+
+    def action() -> None:
+        with st.spinner("正在保存背景资料并更新知识库..."):
+            result = api.ingest_knowledge(payload)
+        st.success(f"背景资料已入库：{result['path']}")
+        if result.get("rebuild_stats"):
+            st.json(result["rebuild_stats"])
+
+    run_action(action)
 
 
 def render_drafts(api: ApiClient) -> None:

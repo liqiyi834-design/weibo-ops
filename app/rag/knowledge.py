@@ -20,15 +20,21 @@ class KnowledgeLoader:
             text = path.read_text(encoding="utf-8").strip()
             if not text:
                 continue
-            chunks.extend(self._split_text(text, path.name, chunk_size, overlap))
+            chunks.extend(self._split_text(text, self._source_name(path), chunk_size, overlap))
         return chunks
 
     def _iter_markdown_files(self) -> list[Path]:
         paths: list[Path] = []
         if self.knowledge_dir.exists():
-            paths.extend(sorted(self.knowledge_dir.glob("*.md")))
+            paths.extend(sorted(self.knowledge_dir.rglob("*.md")))
         paths.extend(path for path in self.extra_files if path.exists())
         return list(dict.fromkeys(paths))
+
+    def _source_name(self, path: Path) -> str:
+        try:
+            return path.relative_to(self.knowledge_dir).as_posix()
+        except ValueError:
+            return path.name
 
     def _split_text(self, text: str, source: str, chunk_size: int, overlap: int) -> list[KnowledgeChunk]:
         if len(text) <= chunk_size:
