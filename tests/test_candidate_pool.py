@@ -19,6 +19,12 @@ def test_candidate_pool_service_saves_lists_and_updates():
             recommended_angle="从公关边界切入。",
             avoid_points=["不要自动发布"],
             source="test",
+            target_platform_scores={"weibo": 92.5, "zhihu": 81.0},
+            recommended_targets=["weibo", "zhihu"],
+            zhihu_question_title="如何看待某品牌文案翻车？",
+            zhihu_answer_angle="从品牌沟通和用户预期展开。",
+            zhihu_required_research=["补充品牌回应"],
+            zhihu_reason="适合展开成长回答",
         )
     ]
 
@@ -36,3 +42,5 @@ def test_candidate_pool_service_saves_lists_and_updates():
     assert summaries[0].item_count == 1
     assert updated.items[0].status == "selected"
     assert updated.items[0].operator_note == "人工确认优先写"
+    assert updated.items[0].target_platform_scores["zhihu"] == 81.0
+    assert updated.items[0].zhihu_question_title == "如何看待某品牌文案翻车？"

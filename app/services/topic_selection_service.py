@@ -5,11 +5,13 @@ import re
 from app.hot_sources.base import HotSearchItem
 from app.schemas.comment import FactSummary, HotTopic, SelectedTopic, TopicSelectionResponse
 from app.services.topic_classifier import TopicClassifier
+from app.services.zhihu_topic_fit_service import ZhihuTopicFitService
 
 
 class TopicSelectionService:
     def __init__(self):
         self.classifier = TopicClassifier()
+        self.zhihu_fit = ZhihuTopicFitService()
 
     def select(self, topics: list[HotTopic | HotSearchItem], max_results: int = 5) -> TopicSelectionResponse:
         evaluated = [self._evaluate(topic) for topic in topics if topic.keyword.strip()]
@@ -30,6 +32,8 @@ class TopicSelectionService:
         risk_level = self._risk_level(classification.category, topic.keyword)
         score = self._score(topic, classification.category, risk_level)
         reason = self._reason(topic, classification.category, risk_level)
+        zhihu_fit = self.zhihu_fit.evaluate(topic, classification.category, risk_level)
+        recommended_targets = self._recommended_targets(score, zhihu_fit.score, risk_level)
         return SelectedTopic(
             rank=topic.rank,
             keyword=topic.keyword,
@@ -47,7 +51,26 @@ class TopicSelectionService:
             label=getattr(topic, "label", None),
             url=topic.url,
             source=topic.source,
+            target_platform_scores={
+                "weibo": round(score, 2),
+                "zhihu": zhihu_fit.score,
+            },
+            recommended_targets=recommended_targets,
+            zhihu_question_title=zhihu_fit.question_title,
+            zhihu_answer_angle=zhihu_fit.answer_angle,
+            zhihu_required_research=zhihu_fit.required_research,
+            zhihu_reason=zhihu_fit.reason,
         )
+
+    def _recommended_targets(self, weibo_score: float, zhihu_score: float, risk_level: str) -> list[str]:
+        targets = []
+        if weibo_score >= 70:
+            targets.append("weibo")
+        if zhihu_score >= 65:
+            targets.append("zhihu")
+        if not targets and risk_level != "high":
+            targets.append("weibo" if weibo_score >= zhihu_score else "zhihu")
+        return targets
 
     def _score(self, topic: HotTopic | HotSearchItem, category: str, risk_level: str) -> float:
         score = 40.0

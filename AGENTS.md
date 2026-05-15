@@ -108,6 +108,8 @@ topic + context_text
 
 - 可输入热搜前 50，输出 3-5 个值得人工审核的锐评选题。
 - 输出字段包括 `score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
+- 候选池已升级为多产线候选池雏形，新增 `target_platform_scores`、`recommended_targets`、`zhihu_question_title`、`zhihu_answer_angle`、`zhihu_required_research`、`zhihu_reason`。
+- 已新增 `app/services/zhihu_topic_fit_service.py`，为知乎回答独立计算解释空间、论证深度、资料可得性和长尾搜索价值。
 - 可选 `enrich_metrics=true` 对候选题做二次采样，补充 `read_count`、`discussion_count`、`sampled_posts_count`、`controversy_score` 并参与评分。
 - 可将选题推荐保存为候选池 JSON，默认目录为 `output/topic_candidates/`。
 - 候选项支持人工状态流转：`candidate`、`selected`、`skipped`、`researched`，并可记录人工备注 `operator_note`。
@@ -321,12 +323,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-40 passed
+41 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的多平台草稿箱筛选体验改动。提交前必须确认：
+当前工作区包含尚未提交的多产线候选池与知乎适配评分改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -444,10 +446,12 @@ docs/HotComment-AI技术方案.md
 已完成第一版：
 
 - 新增 `app/services/topic_selection_service.py`。
+- 新增 `app/services/zhihu_topic_fit_service.py`。
 - 新增 `app/services/topic_research_service.py`。
 - 新增 `app/services/candidate_pool_service.py`。
 - 输入 `HotTopic` / `HotSearchItem` 列表，默认可来自 `GET /api/hot/weibo?limit=50`。
 - 输出候选评分：`score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
+- 输出多产线适配：微博分、知乎分、推荐产线、知乎问题标题、知乎回答角度、知乎所需补充资料。
 - 新增 API：`POST /api/topics/select`。
 - 新增候选池 API：`POST /api/topic-candidates/pools`、`GET /api/topic-candidates/pools`、`GET /api/topic-candidates/pools/{pool_id}`、`PATCH /api/topic-candidates/pools/{pool_id}/items/{item_id}`。
 - 新增 MCP 工具：`select_comment_topics`。

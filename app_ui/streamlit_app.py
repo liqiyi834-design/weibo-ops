@@ -333,11 +333,14 @@ def render_pool_detail(pool: dict) -> None:
                 "序号": index,
                 "状态": item["status"],
                 "话题": item["keyword"],
-                "评分": item["score"],
+                "微博分": item.get("target_platform_scores", {}).get("weibo", item["score"]),
+                "知乎分": item.get("target_platform_scores", {}).get("zhihu"),
+                "推荐产线": " / ".join(item.get("recommended_targets") or []),
                 "风险": item["risk_level"],
                 "热搜排名": item.get("rank"),
                 "推荐理由": item["reason"],
                 "建议角度": item["recommended_angle"],
+                "知乎问题": item.get("zhihu_question_title"),
                 "备注": item.get("operator_note"),
                 "item_id": item["id"],
             }
@@ -529,12 +532,12 @@ def render_create_draft_from_candidate(api: ApiClient) -> None:
         payload = {
             "title": item["keyword"],
             "topic": item["keyword"],
-            "question_title": f"如何看待{item['keyword']}？",
+            "question_title": item.get("zhihu_question_title") or f"如何看待{item['keyword']}？",
             "account_id": account_options[account_label],
             "style": style_options[style_label],
             "emotion_level": emotion_level,
             "use_rag": use_rag,
-            "context_text": context_text,
+            "context_text": build_zhihu_context(item, context_text),
             "candidate_pool_id": pool_holder["id"],
             "candidate_item_id": item["id"],
         }
@@ -720,6 +723,20 @@ def draft_display_text(draft: dict) -> str:
     if draft.get("draft_type") == "zhihu_answer":
         return draft.get("zhihu_answer", {}).get("output", {}).get("answer_body", "")
     return draft.get("generated", {}).get("output", {}).get("short_comment", "")
+
+
+def build_zhihu_context(item: dict, context_text: str) -> str:
+    parts = [
+        context_text,
+        "",
+        f"知乎回答角度：{item.get('zhihu_answer_angle') or ''}",
+        f"知乎适配理由：{item.get('zhihu_reason') or ''}",
+    ]
+    required_research = item.get("zhihu_required_research") or []
+    if required_research:
+        parts.append("知乎回答前建议补充资料：")
+        parts.extend(f"- {entry}" for entry in required_research)
+    return "\n".join(part for part in parts if part is not None)
 
 
 def render_config(api: ApiClient) -> None:

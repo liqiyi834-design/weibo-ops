@@ -170,6 +170,12 @@ class SelectedTopic(BaseModel):
     label: str | None = None
     url: str | None = None
     source: str = "manual"
+    target_platform_scores: dict[str, float] = Field(default_factory=dict)
+    recommended_targets: list[str] = Field(default_factory=list)
+    zhihu_question_title: str | None = None
+    zhihu_answer_angle: str | None = None
+    zhihu_required_research: list[str] = Field(default_factory=list)
+    zhihu_reason: str | None = None
 
 
 class TopicResearchMetrics(BaseModel):

@@ -20,8 +20,28 @@ def test_topic_selection_recommends_comment_worthy_topics():
     assert "平台售后规则引争议" in selected_keywords
     assert response.selected[0].reason
     assert response.selected[0].recommended_angle
+    assert response.selected[0].target_platform_scores["weibo"] == response.selected[0].score
+    assert "zhihu" in response.selected[0].target_platform_scores
+    assert response.selected[0].recommended_targets
     assert all(0 <= item.score <= 100 for item in response.selected)
     assert "不要自动发布" in response.selected[0].avoid_points
+
+
+def test_topic_selection_scores_zhihu_fit_separately():
+    topics = [
+        HotTopic(rank=1, keyword="明星机场自拍", hot_value="1000000", source="test"),
+        HotTopic(rank=2, keyword="平台售后规则引争议", hot_value="900000", source="test"),
+    ]
+
+    response = TopicSelectionService().select(topics, max_results=2)
+    by_keyword = {item.keyword: item for item in response.selected}
+    zhihu_item = by_keyword["平台售后规则引争议"]
+
+    assert zhihu_item.target_platform_scores["zhihu"] > by_keyword["明星机场自拍"].target_platform_scores["zhihu"]
+    assert "zhihu" in zhihu_item.recommended_targets
+    assert zhihu_item.zhihu_question_title == "如何看待平台售后规则引争议？"
+    assert zhihu_item.zhihu_answer_angle
+    assert zhihu_item.zhihu_required_research
 
 
 def test_topic_selection_marks_high_risk_topics():
