@@ -564,23 +564,50 @@ def render_draft_list(api: ApiClient) -> None:
         st.info("还没有草稿。")
         return
 
+    platform_options = ["全部"] + sorted({draft.get("platform", "weibo") for draft in drafts})
+    type_options = ["全部"] + sorted({draft.get("draft_type", "micro_comment") for draft in drafts})
+    status_options = ["全部"] + sorted({draft.get("status", "draft") for draft in drafts})
+    col_platform, col_type, col_status = st.columns(3)
+    with col_platform:
+        selected_platform = st.selectbox("平台筛选", platform_options)
+    with col_type:
+        selected_type = st.selectbox("类型筛选", type_options)
+    with col_status:
+        selected_status = st.selectbox("状态筛选", status_options)
+
+    filtered_drafts = [
+        draft
+        for draft in drafts
+        if (selected_platform == "全部" or draft.get("platform", "weibo") == selected_platform)
+        and (selected_type == "全部" or draft.get("draft_type", "micro_comment") == selected_type)
+        and (selected_status == "全部" or draft.get("status", "draft") == selected_status)
+    ]
+    st.caption(f"当前显示 {len(filtered_drafts)} / {len(drafts)} 条草稿")
+    if not filtered_drafts:
+        st.info("当前筛选条件下没有草稿。")
+        return
+
     rows = [
         {
             "标题": draft["title"],
             "话题": draft["topic"],
-            "状态": draft["status"],
             "平台": draft.get("platform", "weibo"),
             "类型": draft.get("draft_type", "micro_comment"),
+            "状态": draft["status"],
             "风险": draft["risk_level"],
             "风格": draft["style"],
+            "发布链接": draft.get("published_url") or "",
             "更新时间": draft["updated_at"],
             "draft_id": draft["id"],
         }
-        for draft in drafts
+        for draft in filtered_drafts
     ]
     st.dataframe(rows, use_container_width=True, hide_index=True)
 
-    draft_options = {f"{draft['updated_at']} | {draft['title']} | {draft['id']}": draft["id"] for draft in drafts}
+    draft_options = {
+        f"{draft['updated_at']} | {draft.get('platform', 'weibo')} | {draft.get('draft_type', 'micro_comment')} | {draft['title']} | {draft['id']}": draft["id"]
+        for draft in filtered_drafts
+    }
     draft_label = st.selectbox("查看/编辑草稿", list(draft_options.keys()))
     draft_id = draft_options[draft_label]
 
@@ -643,6 +670,9 @@ def render_draft_detail(draft: dict) -> None:
         st.write(draft["operator_note"])
     if draft.get("published_url"):
         st.markdown("#### 人工发布记录")
+        published_at = draft.get("published_at")
+        if published_at:
+            st.write(f"发布时间：{published_at}")
         st.write(draft["published_url"])
         if draft.get("performance_note"):
             st.write(draft["performance_note"])
@@ -662,9 +692,10 @@ def render_draft_editor(api: ApiClient, draft: dict) -> None:
     edited_text = st.text_area(
         "人工编辑正文",
         value=draft.get("edited_text") or draft_display_text(draft),
-        height=160,
+        height=260 if draft.get("draft_type") == "zhihu_answer" else 160,
     )
     published_url = st.text_input("人工发布链接", value=draft.get("published_url") or "")
+    published_at = st.text_input("人工发布时间", value=draft.get("published_at") or "")
     performance_note = st.text_area("发布数据/复盘备注", value=draft.get("performance_note") or "", height=90)
     if st.button("保存草稿修改", use_container_width=True):
         payload = {
@@ -672,6 +703,7 @@ def render_draft_editor(api: ApiClient, draft: dict) -> None:
             "operator_note": note,
             "edited_text": edited_text,
             "published_url": published_url or None,
+            "published_at": published_at or None,
             "performance_note": performance_note or None,
         }
 

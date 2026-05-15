@@ -326,7 +326,7 @@ python -m pytest tests -q -p no:cacheprovider
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的知乎回答草稿 MVP 改动。提交前必须确认：
+当前工作区包含尚未提交的多平台草稿箱筛选体验改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -561,8 +561,8 @@ output/drafts/
 - 已新增 API：`POST /api/zhihu/answer/generate`、`POST /api/drafts/zhihu`。
 - 草稿模型已新增 `platform`、`draft_type`、`published_url`、`published_at`、`performance_note`。
 - Streamlit 已在候选题草稿入口增加“生成知乎回答”按钮。
-- 草稿箱已支持展示知乎回答结构，并可记录人工发布链接和复盘备注。
-- 后续优化：草稿箱按 `platform` / `draft_type` 筛选。
+- 草稿箱已支持展示知乎回答结构，并可记录人工发布链接、发布时间和复盘备注。
+- 草稿箱已支持按 `platform`、`draft_type`、`status` 筛选。
 
 知乎选题适配：
 
