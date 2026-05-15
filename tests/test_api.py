@@ -175,6 +175,7 @@ def test_create_zhihu_draft(monkeypatch):
     assert create_response.status_code == 200
     assert draft["platform"] == "zhihu"
     assert draft["draft_type"] == "zhihu_answer"
+    assert draft["zhihu_answer"]["zhihu_domain"]
     assert draft["zhihu_answer"]["output"]["answer_body"]
 
     update_response = client.patch(

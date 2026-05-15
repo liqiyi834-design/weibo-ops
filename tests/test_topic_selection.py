@@ -42,6 +42,9 @@ def test_topic_selection_scores_zhihu_fit_separately():
     assert zhihu_item.zhihu_question_title == "如何看待平台售后规则引争议？"
     assert zhihu_item.zhihu_answer_angle
     assert zhihu_item.zhihu_required_research
+    assert zhihu_item.zhihu_recommended_domain == "consumer"
+    assert zhihu_item.zhihu_domain_scores["consumer"] > zhihu_item.zhihu_domain_scores["media_culture"]
+    assert zhihu_item.zhihu_domain_reason
 
 
 def test_topic_selection_marks_high_risk_topics():

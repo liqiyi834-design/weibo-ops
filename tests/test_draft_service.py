@@ -67,6 +67,7 @@ def test_draft_service_saves_zhihu_answer_and_publish_note():
         topic="平台售后规则争议",
         account_id="today_direct",
         style="rational_critic",
+        zhihu_domain="consumer",
         fact_summary=FactSummary(topic="平台售后规则争议", confirmed_facts=["事实"]),
         topic_classification=TopicClassification(category="social_issue"),
         retrieved_knowledge=[],
@@ -93,6 +94,7 @@ def test_draft_service_saves_zhihu_answer_and_publish_note():
     assert isinstance(draft, DraftRecord)
     assert draft.platform == "zhihu"
     assert draft.draft_type == "zhihu_answer"
+    assert draft.zhihu_answer.zhihu_domain == "consumer"
     assert draft.generated is None
     assert draft.zhihu_answer is not None
     assert updated.published_url == "https://www.zhihu.com/question/1/answer/2"

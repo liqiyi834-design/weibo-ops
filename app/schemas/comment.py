@@ -151,12 +151,15 @@ class ZhihuAnswerOutput(BaseModel):
 
 class GenerateZhihuAnswerRequest(GenerateCommentRequest):
     question_title: str | None = None
+    zhihu_domain: str | None = None
+    zhihu_domain_context: str | None = None
 
 
 class GenerateZhihuAnswerResponse(BaseModel):
     topic: str
     account_id: str = "today_direct"
     style: str = "rational_critic"
+    zhihu_domain: str | None = None
     fact_summary: FactSummary
     topic_classification: TopicClassification
     retrieved_knowledge: list[RetrievedKnowledge]
@@ -195,6 +198,9 @@ class SelectedTopic(BaseModel):
     zhihu_answer_angle: str | None = None
     zhihu_required_research: list[str] = Field(default_factory=list)
     zhihu_reason: str | None = None
+    zhihu_domain_scores: dict[str, float] = Field(default_factory=dict)
+    zhihu_recommended_domain: str | None = None
+    zhihu_domain_reason: str | None = None
 
 
 class TopicResearchMetrics(BaseModel):

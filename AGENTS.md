@@ -108,8 +108,9 @@ topic + context_text
 
 - 可输入热搜前 50，输出 3-5 个值得人工审核的锐评选题。
 - 输出字段包括 `score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
-- 候选池已升级为多产线候选池雏形，新增 `target_platform_scores`、`recommended_targets`、`zhihu_question_title`、`zhihu_answer_angle`、`zhihu_required_research`、`zhihu_reason`。
-- 已新增 `app/services/zhihu_topic_fit_service.py`，为知乎回答独立计算解释空间、论证深度、资料可得性和长尾搜索价值。
+- 候选池已升级为多产线候选池雏形，新增 `target_platform_scores`、`recommended_targets`、`zhihu_question_title`、`zhihu_answer_angle`、`zhihu_required_research`、`zhihu_reason`、`zhihu_domain_scores`、`zhihu_recommended_domain`、`zhihu_domain_reason`。
+- 已新增 `app/services/zhihu_topic_fit_service.py`，为知乎回答独立计算解释空间、论证深度、资料可得性、长尾搜索价值和垂直领域适配。
+- 已新增 `configs/zhihu_domains.json` 和 `app/services/zhihu_domain_service.py`，当前包含品牌公关、消费维权、职场、年轻人生活、文娱传播 5 个知乎垂直领域。
 - 可选 `enrich_metrics=true` 对候选题做二次采样，补充 `read_count`、`discussion_count`、`sampled_posts_count`、`controversy_score` 并参与评分。
 - 可将选题推荐保存为候选池 JSON，默认目录为 `output/topic_candidates/`。
 - 候选项支持人工状态流转：`candidate`、`selected`、`skipped`、`researched`，并可记录人工备注 `operator_note`。
@@ -306,6 +307,7 @@ tests/test_topic_research.py
 tests/test_style_service.py
 tests/test_draft_service.py
 tests/test_knowledge_ingestion.py
+tests/test_zhihu_domain_service.py
 ```
 
 已验证：
@@ -331,12 +333,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-41 passed
+45 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的多产线候选池与知乎适配评分改动。提交前必须确认：
+当前工作区包含尚未提交的知乎垂直领域配置与领域适配评分改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -455,11 +457,12 @@ docs/HotComment-AI技术方案.md
 
 - 新增 `app/services/topic_selection_service.py`。
 - 新增 `app/services/zhihu_topic_fit_service.py`。
+- 新增 `app/services/zhihu_domain_service.py`。
 - 新增 `app/services/topic_research_service.py`。
 - 新增 `app/services/candidate_pool_service.py`。
 - 输入 `HotTopic` / `HotSearchItem` 列表，默认可来自 `GET /api/hot/weibo?limit=50`。
 - 输出候选评分：`score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
-- 输出多产线适配：微博分、知乎分、推荐产线、知乎问题标题、知乎回答角度、知乎所需补充资料。
+- 输出多产线适配：微博分、知乎分、推荐产线、知乎问题标题、知乎回答角度、知乎所需补充资料、知乎推荐领域和领域匹配理由。
 - 新增 API：`POST /api/topics/select`。
 - 新增候选池 API：`POST /api/topic-candidates/pools`、`GET /api/topic-candidates/pools`、`GET /api/topic-candidates/pools/{pool_id}`、`PATCH /api/topic-candidates/pools/{pool_id}/items/{item_id}`。
 - 新增 MCP 工具：`select_comment_topics`。
@@ -571,6 +574,7 @@ output/drafts/
 
 - 已新增 `ZhihuAnswerGenerator`，复用 `FactSummarizer`、`TopicClassifier`、RAG、`OpinionGenerator` 和表达风格配置。
 - 已新增 API：`POST /api/zhihu/answer/generate`、`POST /api/drafts/zhihu`。
+- 已新增知乎垂直领域配置：`configs/zhihu_domains.json`，生成知乎回答时会注入推荐领域、领域说明、推荐角度和避坑点。
 - 草稿模型已新增 `platform`、`draft_type`、`published_url`、`published_at`、`performance_note`。
 - Streamlit 已在候选题草稿入口增加“生成知乎回答”按钮。
 - 草稿箱已支持展示知乎回答结构，并可记录人工发布链接、发布时间和复盘备注。

@@ -370,6 +370,7 @@ def render_pool_detail(pool: dict) -> None:
                 "推荐产线": " / ".join(item.get("recommended_targets") or []),
                 "风险": item["risk_level"],
                 "热搜排名": item.get("rank"),
+                "知乎领域": item.get("zhihu_recommended_domain"),
                 "推荐理由": item["reason"],
                 "建议角度": item["recommended_angle"],
                 "知乎问题": item.get("zhihu_question_title"),
@@ -630,6 +631,8 @@ def render_create_draft_from_candidate(api: ApiClient) -> None:
             "title": item["keyword"],
             "topic": item["keyword"],
             "question_title": item.get("zhihu_question_title") or f"如何看待{item['keyword']}？",
+            "zhihu_domain": item.get("zhihu_recommended_domain"),
+            "zhihu_domain_context": build_zhihu_domain_context(item),
             "account_id": account_options[account_label],
             "style": style_options[style_label],
             "emotion_level": emotion_level,
@@ -727,8 +730,11 @@ def render_draft_detail(draft: dict) -> None:
     )
 
     if draft.get("draft_type") == "zhihu_answer":
-        output = draft["zhihu_answer"]["output"]
+        zhihu_answer = draft["zhihu_answer"]
+        output = zhihu_answer["output"]
         st.markdown("#### 知乎回答")
+        if zhihu_answer.get("zhihu_domain"):
+            st.markdown(f"**领域：** {zhihu_answer['zhihu_domain']}")
         st.markdown(f"**问题：** {output.get('question_title', '')}")
         st.markdown(f"**标题：** {output.get('answer_title', '')}")
         st.write(output.get("answer_body", ""))
@@ -828,12 +834,26 @@ def build_zhihu_context(item: dict, context_text: str) -> str:
         "",
         f"知乎回答角度：{item.get('zhihu_answer_angle') or ''}",
         f"知乎适配理由：{item.get('zhihu_reason') or ''}",
+        f"知乎推荐领域：{item.get('zhihu_recommended_domain') or ''}",
+        f"知乎领域理由：{item.get('zhihu_domain_reason') or ''}",
     ]
     required_research = item.get("zhihu_required_research") or []
     if required_research:
         parts.append("知乎回答前建议补充资料：")
         parts.extend(f"- {entry}" for entry in required_research)
     return "\n".join(part for part in parts if part is not None)
+
+
+def build_zhihu_domain_context(item: dict) -> str:
+    parts = [
+        f"推荐领域：{item.get('zhihu_recommended_domain') or ''}",
+        f"领域匹配理由：{item.get('zhihu_domain_reason') or ''}",
+        f"回答角度：{item.get('zhihu_answer_angle') or ''}",
+    ]
+    required_research = item.get("zhihu_required_research") or []
+    if required_research:
+        parts.append("需要补充资料：" + "；".join(required_research))
+    return "\n".join(part for part in parts if part.strip())
 
 
 def render_config(api: ApiClient) -> None:

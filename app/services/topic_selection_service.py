@@ -60,6 +60,9 @@ class TopicSelectionService:
             zhihu_answer_angle=zhihu_fit.answer_angle,
             zhihu_required_research=zhihu_fit.required_research,
             zhihu_reason=zhihu_fit.reason,
+            zhihu_domain_scores=zhihu_fit.domain_scores,
+            zhihu_recommended_domain=zhihu_fit.recommended_domain,
+            zhihu_domain_reason=zhihu_fit.domain_reason,
         )
 
     def _recommended_targets(self, weibo_score: float, zhihu_score: float, risk_level: str) -> list[str]:
