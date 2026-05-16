@@ -18,6 +18,58 @@ class HotTopic(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+TopicAssetStatus = Literal["observing", "candidate", "research_needed", "researched", "archived"]
+
+
+class TopicAsset(BaseModel):
+    id: str
+    canonical_title: str
+    summary: str = ""
+    source_platforms: list[str] = Field(default_factory=list)
+    source_urls: list[str] = Field(default_factory=list)
+    hot_signals: dict[str, str | int | float | None] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
+    risk_level: Literal["low", "medium", "high"] = "low"
+    research_status: Literal["none", "needed", "partial", "complete"] = "none"
+    status: TopicAssetStatus = "observing"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TopicAssetCreateRequest(BaseModel):
+    canonical_title: str = Field(min_length=1)
+    summary: str = ""
+    source_platforms: list[str] = Field(default_factory=list)
+    source_urls: list[str] = Field(default_factory=list)
+    hot_signals: dict[str, str | int | float | None] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
+    risk_level: Literal["low", "medium", "high"] = "low"
+    research_status: Literal["none", "needed", "partial", "complete"] = "none"
+    status: TopicAssetStatus = "observing"
+
+
+class TopicAssetUpdateRequest(BaseModel):
+    canonical_title: str | None = None
+    summary: str | None = None
+    source_platforms: list[str] | None = None
+    source_urls: list[str] | None = None
+    hot_signals: dict[str, str | int | float | None] | None = None
+    tags: list[str] | None = None
+    risk_level: Literal["low", "medium", "high"] | None = None
+    research_status: Literal["none", "needed", "partial", "complete"] | None = None
+    status: TopicAssetStatus | None = None
+
+
+class TopicAssetSummary(BaseModel):
+    id: str
+    canonical_title: str
+    source_platforms: list[str] = Field(default_factory=list)
+    risk_level: Literal["low", "medium", "high"] = "low"
+    research_status: Literal["none", "needed", "partial", "complete"] = "none"
+    status: TopicAssetStatus = "observing"
+    updated_at: datetime
+
+
 class FactSummary(BaseModel):
     topic: str
     confirmed_facts: list[str] = Field(default_factory=list)

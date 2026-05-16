@@ -22,6 +22,7 @@ from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
+from app.services.topic_asset_service import TopicAssetService
 from app.services.topic_selection_service import TopicSelectionService
 from app.llm.client import build_llm_client
 from app.schemas.comment import GenerateCommentRequest
@@ -102,6 +103,21 @@ class ApiClient:
 
     def get_knowledge_record(self, record_id: str) -> dict:
         return self.request("GET", f"/api/knowledge/inbox/{record_id}")
+
+    def create_topic_asset(self, payload: dict) -> dict:
+        return self.request("POST", "/api/topic-assets", json=payload)
+
+    def list_topic_assets(self, status: str | None = None, limit: int = 100) -> list[dict]:
+        params = {"limit": limit}
+        if status:
+            params["status"] = status
+        return self.request("GET", "/api/topic-assets", params=params)
+
+    def get_topic_asset(self, asset_id: str) -> dict:
+        return self.request("GET", f"/api/topic-assets/{asset_id}")
+
+    def update_topic_asset(self, asset_id: str, payload: dict) -> dict:
+        return self.request("PATCH", f"/api/topic-assets/{asset_id}", json=payload)
 
 
 class LocalServiceClient:
@@ -236,6 +252,24 @@ class LocalServiceClient:
     def get_knowledge_record(self, record_id: str) -> dict:
         return KnowledgeIngestionService(self.settings).get_record(record_id).model_dump(mode="json")
 
+    def create_topic_asset(self, payload: dict) -> dict:
+        from app.schemas.comment import TopicAssetCreateRequest
+
+        asset = TopicAssetService().create(TopicAssetCreateRequest(**payload))
+        return asset.model_dump(mode="json")
+
+    def list_topic_assets(self, status: str | None = None, limit: int = 100) -> list[dict]:
+        return [asset.model_dump(mode="json") for asset in TopicAssetService().list_assets(status=status, limit=limit)]
+
+    def get_topic_asset(self, asset_id: str) -> dict:
+        return TopicAssetService().get(asset_id).model_dump(mode="json")
+
+    def update_topic_asset(self, asset_id: str, payload: dict) -> dict:
+        from app.schemas.comment import TopicAssetUpdateRequest
+
+        asset = TopicAssetService().update(asset_id, TopicAssetUpdateRequest(**payload))
+        return asset.model_dump(mode="json")
+
 
 def main() -> None:
     apply_streamlit_secrets_to_env()
@@ -261,10 +295,15 @@ def main() -> None:
         if st.button("检查连接", use_container_width=True):
             run_action(lambda: st.success(api.health()))
 
-    tab_create, tab_pools, tab_drafts, tab_config = st.tabs(["生成候选池", "候选池审核", "草稿箱", "账号与风格"])
+    tab_create, tab_assets, tab_pools, tab_drafts, tab_config = st.tabs(
+        ["生成候选池", "综合池", "候选池审核", "草稿箱", "账号与风格"]
+    )
 
     with tab_create:
         render_create_pool(api)
+
+    with tab_assets:
+        render_topic_assets(api)
 
     with tab_pools:
         render_candidate_pools(api)
@@ -354,6 +393,146 @@ def render_candidate_pools(api: ApiClient) -> None:
     render_knowledge_ingestion(api, pool_holder)
 
 
+def render_topic_assets(api: ApiClient) -> None:
+    st.subheader("TopicAsset 综合池")
+    st.write("综合池只保存选题资产的通用信息：来源、风险、资料状态和生命周期。微博、知乎、视频各自的平台候选后续从这里派生。")
+
+    with st.form("create_topic_asset"):
+        title = st.text_input("选题标题")
+        summary = st.text_area("摘要", height=90)
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            source_platforms = st.text_input("来源平台", value="manual")
+        with col_b:
+            risk_level = st.selectbox("风险等级", ["low", "medium", "high"])
+        with col_c:
+            status = st.selectbox("状态", ["observing", "candidate", "research_needed", "researched", "archived"])
+        source_urls = st.text_area("来源链接（一行一个）", height=70)
+        tags = st.text_input("标签（逗号分隔）")
+        submitted = st.form_submit_button("手动加入综合池", use_container_width=True)
+
+    if submitted:
+        payload = {
+            "canonical_title": title,
+            "summary": summary,
+            "source_platforms": split_text_items(source_platforms),
+            "source_urls": split_lines(source_urls),
+            "tags": split_text_items(tags),
+            "risk_level": risk_level,
+            "research_status": "needed" if status == "research_needed" else "none",
+            "status": status,
+        }
+
+        def action() -> None:
+            asset = api.create_topic_asset(payload)
+            st.session_state["current_topic_asset_id"] = asset["id"]
+            st.session_state.pop("topic_assets_cache", None)
+            st.success(f"已加入综合池：{asset['id']}")
+
+        run_action(action)
+
+    st.divider()
+    render_topic_asset_list(api)
+
+
+def render_topic_asset_list(api: ApiClient) -> None:
+    st.markdown("### 已保存选题资产")
+    col_a, col_b = st.columns([1, 3])
+    with col_a:
+        status_filter = st.selectbox("状态筛选", ["全部", "observing", "candidate", "research_needed", "researched", "archived"])
+    with col_b:
+        if st.button("刷新综合池列表", use_container_width=True):
+            st.session_state.pop("topic_assets_cache", None)
+
+    def load_assets() -> list[dict]:
+        cache_key = f"topic_assets_cache_{status_filter}"
+        if cache_key not in st.session_state:
+            status = None if status_filter == "全部" else status_filter
+            st.session_state[cache_key] = api.list_topic_assets(status=status)
+        return st.session_state[cache_key]
+
+    assets: list[dict] = []
+    run_action(lambda: assets.extend(load_assets()))
+    if not assets:
+        st.info("还没有选题资产。可以手动添加，或从候选池加入。")
+        return
+
+    rows = [
+        {
+            "标题": asset["canonical_title"],
+            "来源": " / ".join(asset.get("source_platforms") or []),
+            "风险": asset["risk_level"],
+            "资料": asset["research_status"],
+            "状态": asset["status"],
+            "更新时间": asset["updated_at"],
+            "asset_id": asset["id"],
+        }
+        for asset in assets
+    ]
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    options = {f"{asset['updated_at']} | {asset['canonical_title']} | {asset['id']}": asset["id"] for asset in assets}
+    selected = st.selectbox("查看/更新选题资产", list(options.keys()))
+    asset_id = options[selected]
+    holder: dict[str, Any] = {}
+    run_action(lambda: holder.update(api.get_topic_asset(asset_id)))
+    if holder:
+        render_topic_asset_detail(api, holder)
+
+
+def render_topic_asset_detail(api: ApiClient, asset: dict) -> None:
+    st.markdown(f"**资产 ID：** `{asset['id']}`")
+    st.markdown(f"**标题：** {asset['canonical_title']}")
+    st.write(asset.get("summary") or "")
+    st.json(
+        {
+            "source_platforms": asset.get("source_platforms"),
+            "source_urls": asset.get("source_urls"),
+            "hot_signals": asset.get("hot_signals"),
+            "tags": asset.get("tags"),
+        }
+    )
+
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+        status = st.selectbox(
+            "资产状态",
+            ["observing", "candidate", "research_needed", "researched", "archived"],
+            index=["observing", "candidate", "research_needed", "researched", "archived"].index(asset["status"]),
+            key=f"asset_status_{asset['id']}",
+        )
+    with col_b:
+        risk_level = st.selectbox(
+            "风险等级",
+            ["low", "medium", "high"],
+            index=["low", "medium", "high"].index(asset["risk_level"]),
+            key=f"asset_risk_{asset['id']}",
+        )
+    with col_c:
+        research_status = st.selectbox(
+            "资料状态",
+            ["none", "needed", "partial", "complete"],
+            index=["none", "needed", "partial", "complete"].index(asset["research_status"]),
+            key=f"asset_research_{asset['id']}",
+        )
+    summary = st.text_area("更新摘要", value=asset.get("summary") or "", height=90, key=f"asset_summary_{asset['id']}")
+    if st.button("保存选题资产修改", use_container_width=True, key=f"save_asset_{asset['id']}"):
+        payload = {
+            "summary": summary,
+            "status": status,
+            "risk_level": risk_level,
+            "research_status": research_status,
+        }
+
+        def action() -> None:
+            updated = api.update_topic_asset(asset["id"], payload)
+            st.session_state.pop("topic_assets_cache", None)
+            st.success("选题资产已更新。")
+            render_topic_asset_detail(api, updated)
+
+        run_action(action)
+
+
 def render_pool_detail(pool: dict) -> None:
     st.markdown(f"**候选池 ID：** `{pool['id']}`")
     st.markdown(f"**标题：** {pool['title']}")
@@ -409,6 +588,18 @@ def render_status_editor(api: ApiClient, pool: dict) -> None:
             st.session_state.pop("pools_cache", None)
             st.success(f"已更新 {len(selected_items)} 个候选话题。")
             render_pool_detail(updated_pool)
+
+        run_action(action)
+
+    if st.button("加入综合池", use_container_width=True, disabled=not selected_items):
+        def action() -> None:
+            created_count = 0
+            for item in selected_items:
+                payload = topic_asset_payload_from_candidate(pool, item)
+                api.create_topic_asset(payload)
+                created_count += 1
+            st.session_state.pop("topic_assets_cache", None)
+            st.success(f"已加入综合池：{created_count} 个选题资产。")
 
         run_action(action)
 
@@ -854,6 +1045,43 @@ def build_zhihu_domain_context(item: dict) -> str:
     if required_research:
         parts.append("需要补充资料：" + "；".join(required_research))
     return "\n".join(part for part in parts if part.strip())
+
+
+def topic_asset_payload_from_candidate(pool: dict, item: dict) -> dict:
+    source_platform = item.get("source") or pool.get("source") or "weibo"
+    source_urls = [item["url"]] if item.get("url") else []
+    tags = [item.get("category"), item.get("zhihu_recommended_domain")]
+    return {
+        "canonical_title": item["keyword"],
+        "summary": "\n".join(
+            [
+                f"推荐理由：{item.get('reason') or ''}",
+                f"微博角度：{item.get('recommended_angle') or ''}",
+                f"知乎角度：{item.get('zhihu_answer_angle') or ''}",
+            ]
+        ),
+        "source_platforms": [source_platform],
+        "source_urls": source_urls,
+        "hot_signals": {
+            "rank": item.get("rank"),
+            "hot_value": item.get("hot_value"),
+            "label": item.get("label"),
+            "weibo_score": item.get("target_platform_scores", {}).get("weibo", item.get("score")),
+            "zhihu_score": item.get("target_platform_scores", {}).get("zhihu"),
+        },
+        "tags": [tag for tag in tags if tag],
+        "risk_level": item.get("risk_level", "low"),
+        "research_status": "needed",
+        "status": "candidate",
+    }
+
+
+def split_text_items(text: str) -> list[str]:
+    return [item.strip() for item in text.replace("，", ",").split(",") if item.strip()]
+
+
+def split_lines(text: str) -> list[str]:
+    return [line.strip() for line in text.splitlines() if line.strip()]
 
 
 def render_config(api: ApiClient) -> None:

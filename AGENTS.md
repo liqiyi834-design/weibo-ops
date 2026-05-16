@@ -118,6 +118,26 @@ topic + context_text
 - 风险等级不参与评分，只作为单独提示；低评论空间/纯通稿类仍可因账号适配度低而降权。
 - 只做选题推荐，不自动生成发布内容，不自动发布。
 
+### TopicAsset 综合池
+
+已实现综合池第一版：
+
+- `app/services/topic_asset_service.py`
+- `POST /api/topic-assets`
+- `GET /api/topic-assets`
+- `GET /api/topic-assets/{asset_id}`
+- `PATCH /api/topic-assets/{asset_id}`
+- Streamlit 已新增“综合池” tab。
+- 支持手动创建选题资产。
+- 支持从微博候选池选中候选项后加入综合池。
+- 支持查看综合池列表、详情，并更新状态、风险等级、资料状态和摘要。
+
+当前定位：
+
+- 综合池只保存选题资产通用信息：标题、摘要、来源平台、来源链接、热度信号、标签、风险等级、资料状态和生命周期状态。
+- 不在综合池里保存微博角度、知乎回答角度或视频分镜；这些属于后续平台池。
+- 默认存储目录：`output/topic_assets/`。
+
 ### 账号配置与表达风格
 
 已预留轻量多账号配置，不做完整登录/权限系统：
@@ -308,6 +328,7 @@ tests/test_style_service.py
 tests/test_draft_service.py
 tests/test_knowledge_ingestion.py
 tests/test_zhihu_domain_service.py
+tests/test_topic_asset_service.py
 ```
 
 已验证：
@@ -319,7 +340,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前最新结果：
 
 ```text
-43 passed
+47 passed
 ```
 
 ## 2026-05-14 补充交接
@@ -333,12 +354,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-45 passed
+47 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的知乎垂直领域配置与领域适配评分改动。提交前必须确认：
+当前工作区包含尚未提交的 TopicAsset 综合池 MVP 改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。

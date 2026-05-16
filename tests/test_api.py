@@ -7,6 +7,7 @@ import app.api.routes as routes
 from app.main import app
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
+from app.services.topic_asset_service import TopicAssetService
 
 
 def test_health():
@@ -110,6 +111,45 @@ def test_create_and_update_candidate_pool(monkeypatch):
 
     assert update_response.status_code == 200
     assert update_response.json()["items"][0]["status"] == "selected"
+
+
+def test_topic_asset_api(monkeypatch):
+    test_root = Path(".rag_index") / f"api-topic-asset-test-{uuid4().hex}"
+    monkeypatch.setattr(routes, "TopicAssetService", lambda: TopicAssetService(root=test_root))
+    client = TestClient(app)
+
+    create_response = client.post(
+        "/api/topic-assets",
+        json={
+            "canonical_title": "平台售后规则引争议",
+            "summary": "适合沉淀为选题资产。",
+            "source_platforms": ["weibo"],
+            "source_urls": ["https://example.com/topic"],
+            "hot_signals": {"rank": 3, "hot_value": "900000"},
+            "tags": ["consumer"],
+            "risk_level": "low",
+            "research_status": "needed",
+            "status": "candidate",
+        },
+    )
+    asset = create_response.json()
+
+    assert create_response.status_code == 200
+    assert asset["canonical_title"] == "平台售后规则引争议"
+    assert asset["status"] == "candidate"
+
+    list_response = client.get("/api/topic-assets")
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["id"] == asset["id"]
+
+    update_response = client.patch(
+        f"/api/topic-assets/{asset['id']}",
+        json={"status": "researched", "research_status": "complete"},
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["status"] == "researched"
+    assert update_response.json()["research_status"] == "complete"
 
 
 def test_create_and_update_draft(monkeypatch):

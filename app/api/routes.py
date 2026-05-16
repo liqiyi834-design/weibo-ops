@@ -11,6 +11,7 @@ from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
 from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerResponse, ZhihuDraftCreateRequest
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse, KnowledgeRecord, KnowledgeRecordSummary
+from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
@@ -19,6 +20,7 @@ from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.knowledge_service import KnowledgeService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
+from app.services.topic_asset_service import TopicAssetService
 from app.services.topic_selection_service import TopicSelectionService
 from app.services.zhihu_answer_generator import ZhihuAnswerGenerator
 
@@ -133,6 +135,32 @@ def _merge_topic_metrics(topic: HotTopic, metrics) -> HotTopic:
     topic.sampled_posts_count = metrics.sampled_posts_count
     topic.controversy_score = metrics.controversy_score
     return topic
+
+
+@router.post("/api/topic-assets", response_model=TopicAsset)
+def create_topic_asset(request: TopicAssetCreateRequest) -> TopicAsset:
+    return TopicAssetService().create(request)
+
+
+@router.get("/api/topic-assets", response_model=list[TopicAssetSummary])
+def list_topic_assets(status: str | None = None, limit: int = 100) -> list[TopicAssetSummary]:
+    return TopicAssetService().list_assets(status=status, limit=limit)
+
+
+@router.get("/api/topic-assets/{asset_id}", response_model=TopicAsset)
+def get_topic_asset(asset_id: str) -> TopicAsset:
+    try:
+        return TopicAssetService().get(asset_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch("/api/topic-assets/{asset_id}", response_model=TopicAsset)
+def update_topic_asset(asset_id: str, request: TopicAssetUpdateRequest) -> TopicAsset:
+    try:
+        return TopicAssetService().update(asset_id, request)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/api/comment/generate", response_model=GenerateCommentResponse)
