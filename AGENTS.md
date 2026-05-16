@@ -585,6 +585,41 @@ output/drafts/
 - 适合品牌、公关、平台规则、消费、职场、社会观察和“如何看待”类问题。
 - 不适合纯情绪宣泄、未核实爆料、短平快吃瓜和强攻击个人的内容。
 
+架构决策：
+
+- 微博候选池和知乎候选池必须拆开，不能长期把微博热搜 50 条直接作为知乎候选池。
+- 现有 `CandidatePool` 语义上先视为微博候选池；其中知乎分、知乎领域字段是过渡方案，后续不要继续往 `CandidatePoolItem` 塞更多知乎字段。
+- 知乎应该新增独立问题池：
+  - `ZhihuQuestionPool`
+  - `ZhihuQuestionCandidate`
+  - `ZhihuQuestionPoolService`
+- 知乎候选来源应独立于微博热搜：
+  - `manual_url`
+  - `generated_from_topic`
+  - `zhihu_hot_list`
+  - `zhihu_search`
+  - `zhihu_home_feed`，后续如果使用 cookie，只读问题候选和可见数据。
+- 知乎问题候选字段建议：
+  - `question_title`
+  - `question_url`
+  - `source`
+  - `follow_count`
+  - `view_count`
+  - `answer_count`
+  - `domain`
+  - `domain_score`
+  - `question_quality_score`
+  - `answer_opportunity_score`
+  - `search_value_score`
+  - `zhihu_score`
+  - `reason`
+  - `answer_angle`
+  - `required_research`
+  - `risk_notes`
+  - `status`
+- 知乎评分重点不是热搜热度，而是领域适配、问题质量、关注/浏览与回答供给差、搜索长尾价值、资料支撑和回答空间。
+- 后续 Streamlit 应新增“知乎问题池”页面：手动添加问题标题/URL、从 TopicAsset 或微博候选生成问题候选、查看知乎评分、标记 selected、生成知乎回答。
+
 实现边界：
 
 - 不自动发布知乎回答。
@@ -618,6 +653,63 @@ output/drafts/
 - 推荐后续新增 API：`POST /api/research/topic`。
 - 入库后调用现有 `KnowledgeService.rebuild()` 或后续增量索引。
 - 自动搜索需要明确来源白名单/黑名单、请求频率和失败 fallback，避免把低质搬运内容污染 RAG。
+
+### P3A：综合池到平台池的 LLM 分发建议
+
+用户新增方向：
+
+```text
+TopicAsset 综合池
+-> 规则层计算基础特征和硬约束
+-> LLM 做编辑判断与平台适配建议
+-> 人工确认是否进入微博候选池 / 知乎问题池 / 视频创意池
+```
+
+设计原则：
+
+- LLM 可以参与分发建议，但不能单独拍板。
+- 系统只给推荐去向、理由、阻碍和建议角度，不自动加入平台池。
+- 人工最终确认是否进入某个平台池。
+- 不自动生成发布内容，不自动发布，不自动互动。
+
+推荐新增结构：
+
+- `PlatformRoutingDecision`
+- `RuleBasedPlatformRouter`
+- `LLMPlatformRouter`
+
+推荐输出字段：
+
+- `topic_asset_id`
+- `target_platform`
+- `fit_score`
+- `decision`: `recommended` / `optional` / `not_recommended`
+- `reasons`
+- `blockers`
+- `suggested_angle`
+- `required_research`
+
+推荐流程：
+
+```text
+TopicAsset
+-> RuleBasedPlatformRouter
+   - 微博：热度、时效、冲突、评论钩子、风险
+   - 知乎：领域匹配、问题质量、资料支撑、长尾搜索、回答空间
+   - 视频：视觉化、反差、可生成性、制作成本、风险
+-> LLMPlatformRouter
+   - 补充编辑判断
+   - 解释为什么适合/不适合某个平台
+   - 发现资料缺口和潜在风险
+-> 前端展示
+-> 人工点击“加入微博池 / 加入知乎问题池 / 加入视频创意池 / 忽略”
+```
+
+硬约束建议仍由规则层负责：
+
+- 高风险司法、未成年人、灾难、政治敏感等话题默认限制情绪化微博短评。
+- 未核实爆料不推荐进入知乎长回答或视频创意。
+- 缺少可靠来源时，知乎进入 `required_research`，不直接生成回答。
 
 ### P4：热搜 Provider 与热榜清洗
 
