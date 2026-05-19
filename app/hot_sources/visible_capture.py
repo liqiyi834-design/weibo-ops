@@ -97,6 +97,7 @@ class VisibleCaptureHotSearchProvider(BaseHotSearchProvider):
     def _clean_keyword(self, value: str) -> str:
         text = re.sub(r"\s+", " ", value).strip()
         text = re.sub(r"^(微博热搜|热搜|#)", "", text).strip()
+        text = re.sub(r"^([^#]{2,40})#.*$", r"\1", text).strip()
         text = re.sub(r"(阅读|讨论|主持人|导语).*$", "", text).strip()
         return text[:40]
 
@@ -106,5 +107,9 @@ class VisibleCaptureHotSearchProvider(BaseHotSearchProvider):
         if len(value) < 4 or len(value) > 24:
             return False
         if re.search(r"https?://|登录|转发|评论|赞|关注|展开|全文|客户端|广告", value):
+            return False
+        if value in {"微博 – 随时随地发现新鲜事", "微博-随时随地发现新鲜事", "今日观察"}:
+            return False
+        if value.startswith("微博 ") or value.startswith("微博–") or value.startswith("微博-"):
             return False
         return bool(re.search(r"[\u4e00-\u9fff]", value))

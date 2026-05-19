@@ -48,6 +48,7 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
             )
             response.raise_for_status()
             response.encoding = response.encoding or "utf-8"
+            self._raise_for_login_redirect(response)
             items = self._parse_items(response.text, limit=limit)
             if not items:
                 raise ValueError("No hot search items found in Weibo cookie response.")
@@ -59,6 +60,14 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
             fallback_error = f"; fallback_error={fallback_response.error}" if fallback_response.error else ""
             fallback_response.error = f"cookie_error={exc}{fallback_error}"
             return fallback_response
+
+    def _raise_for_login_redirect(self, response: httpx.Response) -> None:
+        final_url = str(response.url)
+        if "login.sina.com.cn" in final_url or "passport.weibo" in final_url:
+            raise ValueError("Weibo redirected to login; WEIBO_COOKIE is invalid or expired.")
+        text = response.text[:2000]
+        if "sso/login" in text or "login.sina.com.cn" in text:
+            raise ValueError("Weibo returned a login page; WEIBO_COOKIE is invalid or expired.")
 
     def _parse_items(self, html: str, limit: int = 20) -> list[HotSearchItem]:
         items: list[HotSearchItem] = []

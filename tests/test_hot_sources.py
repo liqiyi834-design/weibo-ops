@@ -46,6 +46,19 @@ def test_weibo_cookie_provider_falls_back_without_cookie():
     assert "WEIBO_COOKIE" in (response.error or "")
 
 
+def test_weibo_cookie_provider_detects_login_redirect():
+    class Response:
+        url = "https://login.sina.com.cn/sso/login.php"
+        text = ""
+
+    try:
+        WeiboCookieHotSearchProvider(cookie="SUB=fake")._raise_for_login_redirect(Response())
+    except ValueError as exc:
+        assert "invalid or expired" in str(exc)
+    else:
+        raise AssertionError("login redirect should raise ValueError")
+
+
 def test_visible_capture_provider_extracts_hashtags():
     sample_dir = Path(".rag_index") / f"visible-test-{uuid4().hex}"
     sample_dir.mkdir(parents=True)
@@ -68,3 +81,25 @@ def test_visible_capture_provider_extracts_hashtags():
     assert response.fallback_used is False
     assert [item.keyword for item in response.items] == ["测试热搜一", "测试热搜二"]
     assert response.items[0].source == "weibo_visible_capture"
+
+
+def test_visible_capture_provider_filters_page_title_noise():
+    sample_dir = Path(".rag_index") / f"visible-noise-test-{uuid4().hex}"
+    sample_dir.mkdir(parents=True)
+    (sample_dir / "capture.json").write_text(
+        """
+        {
+          "page_title": "微博 – 随时随地发现新鲜事",
+          "samples": [
+            {
+              "body_text": "微博 – 随时随地发现新鲜事\\n#真实热搜话题# 正文内容\\n今日观察"
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    response = VisibleCaptureHotSearchProvider(sample_dirs=[sample_dir]).fetch(limit=3)
+
+    assert [item.keyword for item in response.items] == ["真实热搜话题"]
