@@ -87,3 +87,22 @@ def test_topic_selection_uses_research_metrics_in_reason_and_score():
     assert response.selected[0].score > response.selected[1].score
     assert "阅读量约 120000000" in response.selected[0].reason
     assert "讨论量约 300000" in response.selected[0].reason
+
+
+def test_topic_selection_preserves_hot_category_label():
+    topics = [
+        HotTopic(
+            rank=1,
+            keyword="movie topic",
+            hot_value="1033108",
+            category_label="movie",
+            label="hot",
+            source="test",
+        )
+    ]
+
+    response = TopicSelectionService().select(topics, max_results=3)
+
+    assert response.selected[0].hot_value == "1033108"
+    assert response.selected[0].category_label == "movie"
+    assert response.selected[0].label == "hot"

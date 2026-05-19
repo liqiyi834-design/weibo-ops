@@ -8,6 +8,7 @@ class HotTopic(BaseModel):
     rank: int | None = None
     keyword: str
     hot_value: str | None = None
+    category_label: str | None = None
     read_count: int | None = None
     discussion_count: int | None = None
     sampled_posts_count: int | None = None
@@ -237,6 +238,7 @@ class SelectedTopic(BaseModel):
     recommended_angle: str
     avoid_points: list[str] = Field(default_factory=list)
     hot_value: str | None = None
+    category_label: str | None = None
     read_count: int | None = None
     discussion_count: int | None = None
     sampled_posts_count: int | None = None

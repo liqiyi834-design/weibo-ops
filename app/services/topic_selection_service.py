@@ -44,6 +44,7 @@ class TopicSelectionService:
             recommended_angle=self._recommended_angle(topic.keyword, classification.category, risk_level),
             avoid_points=self._avoid_points(classification.category, risk_level),
             hot_value=topic.hot_value,
+            category_label=getattr(topic, "category_label", None),
             read_count=getattr(topic, "read_count", None),
             discussion_count=getattr(topic, "discussion_count", None),
             sampled_posts_count=getattr(topic, "sampled_posts_count", None),

@@ -38,6 +38,30 @@ def test_weibo_cookie_provider_parses_summary_html():
     assert items[1].keyword == "测试网页热搜二"
 
 
+def test_weibo_cookie_provider_splits_hot_value_category():
+    html = """
+    <table>
+      <tr>
+        <td class="td-01">1</td>
+        <td class="td-02"><a href="/weibo?q=movie">movie topic</a><span>movie 1033108</span><i>hot</i></td>
+      </tr>
+      <tr>
+        <td class="td-01">2</td>
+        <td class="td-02"><a href="/weibo?q=plain">plain topic</a><span>98765</span></td>
+      </tr>
+    </table>
+    """
+
+    items = WeiboCookieHotSearchProvider(cookie="SUB=fake")._parse_items(html, limit=2)
+
+    assert items[0].hot_value == "1033108"
+    assert items[0].category_label == "movie"
+    assert items[0].label == "hot"
+    assert items[0].raw["hot_value_raw"] == "movie 1033108"
+    assert items[1].hot_value == "98765"
+    assert items[1].category_label is None
+
+
 def test_weibo_cookie_provider_falls_back_without_cookie():
     response = WeiboCookieHotSearchProvider(cookie=None).fetch(limit=2)
 

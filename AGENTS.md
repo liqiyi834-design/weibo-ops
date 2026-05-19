@@ -340,7 +340,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前最新结果：
 
 ```text
-47 passed
+51 passed
 ```
 
 ## 2026-05-14 补充交接
@@ -354,12 +354,12 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-47 passed
+51 passed
 ```
 
 ## 当前待提交改动
 
-当前工作区包含尚未提交的 TopicAsset 综合池 MVP 改动。提交前必须确认：
+当前工作区包含尚未提交的微博热搜热度字段清洗改动。提交前必须确认：
 
 - `.env` 不提交。
 - `.rag_index/` 不提交。
@@ -369,7 +369,7 @@ python -m pytest tests -q -p no:cacheprovider
 建议提交信息：
 
 ```text
-实现知乎回答草稿MVP
+清洗微博热搜热度分类字段
 ```
 
 ## 重要经验与踩坑记录
@@ -735,6 +735,8 @@ TopicAsset
 ### P4：热搜 Provider 与热榜清洗
 
 当前微博热搜 Cookie 抓取已可用，已验证 `GET /api/hot/weibo?limit=50` 能返回 50 条。
+已修复 Cookie 失效时微博登录跳转未被识别的问题；当返回登录页或重定向到登录域名时会降级 fallback 并在 error 中提示 Cookie 失效。
+已新增 `category_label` 字段，用于保存 `电影`、`综艺`、`剧集` 等热搜分类；`hot_value` 只保留纯数字热度，避免 `综艺 126022` 混入评分和展示。
 
 已实现接口：
 
@@ -756,9 +758,7 @@ get_hot_topics
 - 候选池中保留来源平台、来源链接、原始排名和平台热度字段。
 - 第二个平台优先选择公开、低风险、无需账号操作的来源，例如百度热搜、知乎热榜或 B 站热榜。
 - 后续支持跨平台同题聚合：同一事件出现在多个平台时合并展示，并把“跨平台讨论广度”作为选题参考因素。
-- 修复 `hot_value` 偶尔混入分类词的问题，例如 `综艺 126022`。
 - 根据运营策略决定是否过滤置顶、政务、低评论空间话题。
-- 增加热度字段解析测试。
 
 多平台边界：
 

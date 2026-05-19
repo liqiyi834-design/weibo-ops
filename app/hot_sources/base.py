@@ -12,6 +12,7 @@ class HotSearchItem(BaseModel):
     rank: int
     keyword: str
     hot_value: str | None = None
+    category_label: str | None = None
     url: str | None = None
     label: str | None = None
     source: str = "unknown"

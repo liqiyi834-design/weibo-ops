@@ -79,14 +79,20 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
             if not keyword or keyword in {"实时热点", "查看更多"}:
                 continue
             rank = len(items) + 1
+            hot_value, category_label, hot_value_raw = self._extract_hot_meta(row)
+            raw = {}
+            if hot_value_raw and hot_value_raw != hot_value:
+                raw["hot_value_raw"] = hot_value_raw
             items.append(
                 HotSearchItem(
                     rank=rank,
                     keyword=keyword,
-                    hot_value=self._extract_hot_value(row),
+                    hot_value=hot_value,
+                    category_label=category_label,
                     label=self._extract_label(row),
                     source=self.source,
                     url=build_weibo_search_url(keyword),
+                    raw=raw,
                 )
             )
             if len(items) >= limit:
@@ -100,11 +106,23 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
         return self._clean_text(match.group(1))
 
     def _extract_hot_value(self, row: str) -> str | None:
+        hot_value, _, _ = self._extract_hot_meta(row)
+        return hot_value
+
+    def _extract_hot_meta(self, row: str) -> tuple[str | None, str | None, str | None]:
         match = re.search(r'<span[^>]*>(.*?)</span>', row, flags=re.S | re.I)
         if not match:
-            return None
-        value = self._clean_text(match.group(1))
-        return value or None
+            return None, None, None
+        raw_value = self._clean_text(match.group(1))
+        if not raw_value:
+            return None, None, None
+        number_matches = re.findall(r"\d+", raw_value)
+        if not number_matches:
+            return None, raw_value, raw_value
+        hot_value = number_matches[-1]
+        category_label = re.sub(r"\d+", "", raw_value)
+        category_label = re.sub(r"\s+", " ", category_label).strip() or None
+        return hot_value, category_label, raw_value
 
     def _extract_label(self, row: str) -> str | None:
         match = re.search(r'<i[^>]*>(.*?)</i>', row, flags=re.S | re.I)

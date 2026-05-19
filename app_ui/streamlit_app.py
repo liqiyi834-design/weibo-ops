@@ -139,6 +139,7 @@ class LocalServiceClient:
                 rank=item.rank,
                 keyword=item.keyword,
                 hot_value=item.hot_value,
+                category_label=item.category_label,
                 url=item.url,
                 label=item.label,
                 source=item.source,
@@ -549,6 +550,7 @@ def render_pool_detail(pool: dict) -> None:
                 "推荐产线": " / ".join(item.get("recommended_targets") or []),
                 "风险": item["risk_level"],
                 "热搜排名": item.get("rank"),
+                "热搜分类": item.get("category_label"),
                 "知乎领域": item.get("zhihu_recommended_domain"),
                 "推荐理由": item["reason"],
                 "建议角度": item["recommended_angle"],
@@ -1065,6 +1067,7 @@ def topic_asset_payload_from_candidate(pool: dict, item: dict) -> dict:
         "hot_signals": {
             "rank": item.get("rank"),
             "hot_value": item.get("hot_value"),
+            "category_label": item.get("category_label"),
             "label": item.get("label"),
             "weibo_score": item.get("target_platform_scores", {}).get("weibo", item.get("score")),
             "zhihu_score": item.get("target_platform_scores", {}).get("zhihu"),

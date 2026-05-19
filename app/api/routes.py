@@ -68,6 +68,7 @@ def select_comment_topics(request: TopicSelectionRequest) -> TopicSelectionRespo
                 rank=item.rank,
                 keyword=item.keyword,
                 hot_value=item.hot_value,
+                category_label=item.category_label,
                 url=item.url,
                 label=item.label,
                 source=item.source,
