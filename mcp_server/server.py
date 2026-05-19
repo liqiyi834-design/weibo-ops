@@ -3,11 +3,14 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from mcp_server.tools import (
+    classify_topic_tool,
     generate_comment_tool,
     get_ent_topics_tool,
     get_hot_topics_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
+    retrieve_knowledge_tool,
+    safety_check_tool,
     search_knowledge_tool,
     select_comment_topics_tool,
     save_draft_tool,
@@ -39,6 +42,12 @@ def select_comment_topics(
         enrich_metrics=enrich_metrics,
         research_limit=research_limit,
     )
+
+
+@mcp.tool
+def classify_topic(topic: str, context_text: str = "") -> dict:
+    """Classify a topic and return risk/style guidance for human-reviewed drafting."""
+    return classify_topic_tool(topic=topic, context_text=context_text)
 
 
 @mcp.tool
@@ -129,6 +138,18 @@ def rebuild_knowledge() -> dict:
 def search_knowledge(query: str, top_k: int = 5) -> list[dict]:
     """Search the local RAG knowledge index, falling back to keyword retrieval if needed."""
     return search_knowledge_tool(query=query, top_k=top_k)
+
+
+@mcp.tool
+def retrieve_knowledge(query: str, top_k: int = 5) -> list[dict]:
+    """Retrieve relevant local RAG knowledge. Alias aligned with the project blueprint."""
+    return retrieve_knowledge_tool(query=query, top_k=top_k)
+
+
+@mcp.tool
+def safety_check(text: str, topic: str = "", context_text: str = "") -> dict:
+    """Check a candidate draft or text for review risk without publishing anything."""
+    return safety_check_tool(text=text, topic=topic, context_text=context_text)
 
 
 if __name__ == "__main__":

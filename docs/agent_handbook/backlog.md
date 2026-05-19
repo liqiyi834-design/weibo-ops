@@ -1,19 +1,18 @@
 # 待办
 
-## P0：补齐 MCP 工具
+## P0：补齐 MCP 工具（已完成）
 
 目标：让 Codex/MCP 自动化入口对齐总纲。
 
-待实现或对齐：
+已实现：
 
 - `classify_topic`
 - `retrieve_knowledge`
 - `safety_check`
-
-已有但可命名对齐：
-
-- `search_knowledge` 基本覆盖 `retrieve_knowledge`。
-- `save_draft`、`list_drafts`、`get_hot_topics` 已完成。
+- `search_knowledge`
+- `save_draft`
+- `list_drafts`
+- `get_hot_topics`
 
 ## P1：综合池到平台池分发建议
 

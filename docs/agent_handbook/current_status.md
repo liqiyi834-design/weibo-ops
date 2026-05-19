@@ -128,6 +128,9 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `update_draft`
 - `rebuild_knowledge`
 - `search_knowledge`
+- `retrieve_knowledge`
+- `classify_topic`
+- `safety_check`
 
 启动：
 
@@ -190,5 +193,5 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-51 passed
+53 passed
 ```

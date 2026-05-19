@@ -6,10 +6,13 @@ from app.llm.client import MockLLMClient
 from app.services.draft_service import DraftService
 import mcp_server.tools as tools
 from mcp_server.tools import (
+    classify_topic_tool,
     generate_comment_tool,
     get_hot_topics_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
+    retrieve_knowledge_tool,
+    safety_check_tool,
     search_knowledge_tool,
     select_comment_topics_tool,
     save_draft_tool,
@@ -37,11 +40,39 @@ def test_mcp_knowledge_tools():
     settings = Settings(OPENAI_API_KEY=None, KNOWLEDGE_DIR=Path("app/knowledge"))
     rebuild_result = rebuild_knowledge_tool(settings=settings)
     search_result = search_knowledge_tool("品牌文案翻车", settings=settings)
+    retrieve_result = retrieve_knowledge_tool("品牌文案翻车", settings=settings)
 
     assert rebuild_result["success"] is True
     assert rebuild_result["chunk_count"] > 0
     assert search_result
+    assert retrieve_result
     assert "source" in search_result[0]
+    assert "source" in retrieve_result[0]
+
+
+def test_mcp_classify_topic_tool():
+    result = classify_topic_tool(
+        topic="某品牌母亲节文案翻车",
+        context_text="品牌文案被质疑表达不当。",
+    )
+
+    assert result["topic"] == "某品牌母亲节文案翻车"
+    assert result["category"]
+    assert result["risk_level"] in {"low", "medium", "high"}
+    assert result["recommended_style"]
+    assert isinstance(result["risk_notes"], list)
+
+
+def test_mcp_safety_check_tool_reviews_text_without_publishing():
+    result = safety_check_tool(
+        text="目前公开信息有限，先讨论事实边界和规则责任。",
+        topic="平台售后规则引争议",
+    )
+
+    assert result["topic"] == "平台售后规则引争议"
+    assert result["risk_level"] in {"low", "medium", "high", "blocked"}
+    assert result["recommendation"] in {"review_before_publish", "human_review_required", "blocked"}
+    assert "issues" in result
 
 
 def test_mcp_get_hot_topics_tool():

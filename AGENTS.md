@@ -58,7 +58,7 @@ docs/agent_handbook/platform_video.md
 - Streamlit 工作台第一版。
 - 草稿箱第一版。
 - 本地 RAG 与人工背景资料入库。
-- MCP 最小工具服务。
+- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`。
 - 轻量多账号配置与表达风格配置。
 - 知乎回答草稿 MVP 与知乎垂直领域适配。
 
@@ -71,7 +71,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前结果：
 
 ```text
-51 passed
+53 passed
 ```
 
 详情见 [current_status.md](docs/agent_handbook/current_status.md)。
@@ -80,11 +80,11 @@ python -m pytest tests -q -p no:cacheprovider
 
 当前最值得推进的是：
 
-1. P0：补齐 MCP 工具命名与能力，对齐总纲里的 `classify_topic`、`retrieve_knowledge`、`safety_check`。
-2. P1：实现综合池到平台池的规则分发建议，再预留 LLM 分发接口。
-3. P2：新增独立知乎问题池，停止把微博候选池长期兼作知乎候选池。
-4. P3：设计背景资料搜索/入库的人工审查流程，暂不做全自动网页抓取。
-5. P4：继续抽象多平台 HotTopicProvider，优先选择公开、低风险来源。
+1. P1：实现综合池到平台池的规则分发建议，再预留 LLM 分发接口。
+2. P2：新增独立知乎问题池，停止把微博候选池长期兼作知乎候选池。
+3. P3：设计背景资料搜索/入库的人工审查流程，暂不做全自动网页抓取。
+4. P4：继续抽象多平台 HotTopicProvider，优先选择公开、低风险来源。
+5. P5：规划自动化任务，只生成候选或草稿，不自动发布。
 
 完整待办见 [backlog.md](docs/agent_handbook/backlog.md)。
 

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from app.core.config import Settings, get_settings
 from app.llm.client import BaseLLMClient, build_llm_client
-from app.schemas.comment import DraftUpdateRequest, GenerateCommentRequest, HotTopic
+from app.schemas.comment import CommentOutput, DraftUpdateRequest, FactSummary, GenerateCommentRequest, HotTopic
 from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
+from app.services.safety_checker import SafetyChecker
+from app.services.topic_classifier import TopicClassifier
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_selection_service import TopicSelectionService
 
@@ -107,6 +109,50 @@ def search_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None 
     return [item.model_dump() for item in results]
 
 
+def retrieve_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None = None) -> list[dict]:
+    return search_knowledge_tool(query=query, top_k=top_k, settings=settings)
+
+
+def classify_topic_tool(topic: str, context_text: str = "") -> dict:
+    fact_summary = FactSummary(topic=topic)
+    classification = TopicClassifier().classify(topic, context_text, fact_summary)
+    risk_level = _classification_risk_level(classification.max_emotion_level, classification.category)
+    return {
+        "topic": topic,
+        "category": classification.category,
+        "risk_level": risk_level,
+        "recommended_style": classification.recommended_persona,
+        "max_emotion_level": classification.max_emotion_level,
+        "risk_notes": classification.risk_notes,
+    }
+
+
+def safety_check_tool(text: str, topic: str = "", context_text: str = "") -> dict:
+    subject = topic or text[:80] or "manual_text"
+    fact_summary = FactSummary(topic=subject)
+    classification = TopicClassifier().classify(subject, f"{context_text} {text}", fact_summary)
+    output = CommentOutput(
+        one_liner=text,
+        short_comment=text,
+        emotional_version="",
+        rational_version=text,
+        ironic_version="",
+        comment_replies=[],
+    )
+    result = SafetyChecker().check(output, fact_summary, classification)
+    recommendation = "blocked" if result.risk_level == "blocked" else "human_review_required"
+    if result.is_safe and result.risk_level == "low":
+        recommendation = "review_before_publish"
+    return {
+        "topic": subject,
+        "is_safe": result.is_safe,
+        "risk_level": result.risk_level,
+        "issues": result.issues,
+        "recommendation": recommendation,
+        "revised_output": result.revised_output.model_dump() if result.revised_output else None,
+    }
+
+
 def get_hot_topics_tool(limit: int = 20, settings: Settings | None = None) -> dict:
     active_settings = settings or get_settings()
     response = HotSearchService(active_settings).get_weibo_hot_topics(limit=limit)
@@ -157,3 +203,13 @@ def select_comment_topics_tool(
             topic.controversy_score = metrics.controversy_score
     result = TopicSelectionService().select(hot_topics, max_results=max_results)
     return result.model_dump()
+
+
+def _classification_risk_level(max_emotion_level: int, category: str) -> str:
+    if category in {"political_sensitive", "crime_case", "disaster", "minor_related"}:
+        return "high"
+    if max_emotion_level <= 4:
+        return "high"
+    if max_emotion_level <= 6:
+        return "medium"
+    return "low"
