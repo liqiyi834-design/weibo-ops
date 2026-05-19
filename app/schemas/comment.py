@@ -20,6 +20,8 @@ class HotTopic(BaseModel):
 
 
 TopicAssetStatus = Literal["observing", "candidate", "research_needed", "researched", "archived"]
+PlatformTarget = Literal["weibo", "zhihu", "video"]
+PlatformRoutingDecisionType = Literal["recommended", "optional", "not_recommended"]
 
 
 class TopicAsset(BaseModel):
@@ -69,6 +71,23 @@ class TopicAssetSummary(BaseModel):
     research_status: Literal["none", "needed", "partial", "complete"] = "none"
     status: TopicAssetStatus = "observing"
     updated_at: datetime
+
+
+class PlatformRoutingDecision(BaseModel):
+    topic_asset_id: str
+    target_platform: PlatformTarget
+    fit_score: float = Field(ge=0, le=100)
+    decision: PlatformRoutingDecisionType
+    reasons: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    suggested_angle: str = ""
+    required_research: list[str] = Field(default_factory=list)
+
+
+class PlatformRoutingResponse(BaseModel):
+    topic_asset_id: str
+    llm_used: bool = False
+    decisions: list[PlatformRoutingDecision]
 
 
 class FactSummary(BaseModel):

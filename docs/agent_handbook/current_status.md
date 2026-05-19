@@ -39,6 +39,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `GET /api/topic-assets`
 - `GET /api/topic-assets/{asset_id}`
 - `PATCH /api/topic-assets/{asset_id}`
+- `POST /api/topic-assets/{asset_id}/routing`
 - `POST /api/knowledge/rebuild`
 - `POST /api/knowledge/search`
 - `POST /api/knowledge/ingest`
@@ -82,12 +83,14 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - 手动创建选题资产。
 - 从微博候选池 selected 项加入综合池。
 - 查看、更新状态、风险等级、资料状态和摘要。
+- LLM 平台分发建议，输出微博、知乎、视频三类去向的分数、建议、理由、阻碍、建议角度和需补资料。
+- 高风险话题仍由规则层施加硬约束，不能让 LLM 单独决定发布方向。
 
 当前原则：
 
 - 综合池只保存通用选题资产。
 - 微博角度、知乎回答角度、视频分镜不放综合池。
-- 后续由综合池分发到各平台池。
+- 由综合池给出平台分发建议，再由人工确认是否进入各平台池。
 
 ### Streamlit 工作台
 
@@ -103,6 +106,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - 发布链接、发布时间、复盘备注记录。
 - 账号配置与表达风格查看。
 - 综合池 tab。
+- 综合池详情页可生成并查看 LLM 平台分发建议。
 
 ### RAG 与知识库
 
@@ -193,5 +197,5 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-53 passed
+56 passed
 ```

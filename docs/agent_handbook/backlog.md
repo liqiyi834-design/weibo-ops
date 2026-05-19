@@ -2,8 +2,6 @@
 
 ## P0：补齐 MCP 工具（已完成）
 
-目标：让 Codex/MCP 自动化入口对齐总纲。
-
 已实现：
 
 - `classify_topic`
@@ -14,22 +12,25 @@
 - `list_drafts`
 - `get_hot_topics`
 
-## P1：综合池到平台池分发建议
+## P1：综合池到平台池分发建议（LLM MVP 已完成）
 
-目标：
+已实现：
+
+- `PlatformRoutingDecision`
+- `PlatformRoutingResponse`
+- `LLMPlatformRouter`
+- `POST /api/topic-assets/{asset_id}/routing`
+- Streamlit 综合池详情页“生成 LLM 分发建议”
+
+当前流程：
 
 ```text
 TopicAsset
--> 规则层平台适配
--> LLM 编辑判断
--> 人工确认进入微博候选池 / 知乎问题池 / 视频创意池
+-> 规则层给出基础分和硬约束
+-> LLM 做编辑判断与平台适配解释
+-> 输出微博 / 知乎 / 视频三类平台建议
+-> 人工确认是否进入具体平台池
 ```
-
-建议新增：
-
-- `PlatformRoutingDecision`
-- `RuleBasedPlatformRouter`
-- `LLMPlatformRouter`
 
 输出字段：
 
@@ -42,7 +43,13 @@ TopicAsset
 - `suggested_angle`
 - `required_research`
 
-硬约束仍由规则层负责，高风险话题不应交给 LLM 单独判断。
+硬约束仍由规则层负责，高风险话题不交给 LLM 单独判断。
+
+后续可继续：
+
+- 把“人工确认加入微博池/知乎问题池/视频创意池”做成明确按钮。
+- 记录每次分发建议的历史结果。
+- 将 LLM 分发建议接入 MCP。
 
 ## P2：知乎问题池
 

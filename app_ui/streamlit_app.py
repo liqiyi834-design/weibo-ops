@@ -20,6 +20,7 @@ from app.services.draft_service import DraftService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
+from app.services.platform_router import LLMPlatformRouter
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_asset_service import TopicAssetService
@@ -118,6 +119,9 @@ class ApiClient:
 
     def update_topic_asset(self, asset_id: str, payload: dict) -> dict:
         return self.request("PATCH", f"/api/topic-assets/{asset_id}", json=payload)
+
+    def route_topic_asset(self, asset_id: str) -> dict:
+        return self.request("POST", f"/api/topic-assets/{asset_id}/routing")
 
 
 class LocalServiceClient:
@@ -270,6 +274,11 @@ class LocalServiceClient:
 
         asset = TopicAssetService().update(asset_id, TopicAssetUpdateRequest(**payload))
         return asset.model_dump(mode="json")
+
+    def route_topic_asset(self, asset_id: str) -> dict:
+        asset = TopicAssetService().get(asset_id)
+        llm = build_llm_client(self.settings)
+        return LLMPlatformRouter(llm).route(asset).model_dump(mode="json")
 
 
 def main() -> None:
@@ -532,6 +541,31 @@ def render_topic_asset_detail(api: ApiClient, asset: dict) -> None:
             render_topic_asset_detail(api, updated)
 
         run_action(action)
+
+    st.markdown("### 平台分发建议")
+    if st.button("生成 LLM 分发建议", use_container_width=True, key=f"route_asset_{asset['id']}"):
+        def route_action() -> None:
+            routing = api.route_topic_asset(asset["id"])
+            st.session_state[f"asset_routing_{asset['id']}"] = routing
+
+        run_action(route_action)
+
+    routing = st.session_state.get(f"asset_routing_{asset['id']}")
+    if routing:
+        st.caption(f"LLM used: {routing.get('llm_used')}")
+        rows = [
+            {
+                "平台": item.get("target_platform"),
+                "分数": item.get("fit_score"),
+                "建议": item.get("decision"),
+                "理由": "；".join(item.get("reasons") or []),
+                "阻碍": "；".join(item.get("blockers") or []),
+                "建议角度": item.get("suggested_angle"),
+                "需补资料": "；".join(item.get("required_research") or []),
+            }
+            for item in routing.get("decisions", [])
+        ]
+        st.dataframe(rows, use_container_width=True, hide_index=True)
 
 
 def render_pool_detail(pool: dict) -> None:

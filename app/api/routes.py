@@ -11,6 +11,7 @@ from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
 from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerResponse, ZhihuDraftCreateRequest
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse, KnowledgeRecord, KnowledgeRecordSummary
+from app.schemas.comment import PlatformRoutingResponse
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
@@ -18,6 +19,7 @@ from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.knowledge_service import KnowledgeService
+from app.services.platform_router import LLMPlatformRouter
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_asset_service import TopicAssetService
@@ -162,6 +164,17 @@ def update_topic_asset(asset_id: str, request: TopicAssetUpdateRequest) -> Topic
         return TopicAssetService().update(asset_id, request)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/api/topic-assets/{asset_id}/routing", response_model=PlatformRoutingResponse)
+def route_topic_asset(asset_id: str) -> PlatformRoutingResponse:
+    settings = get_settings()
+    try:
+        asset = TopicAssetService().get(asset_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    llm = build_llm_client(settings)
+    return LLMPlatformRouter(llm).route(asset)
 
 
 @router.post("/api/comment/generate", response_model=GenerateCommentResponse)

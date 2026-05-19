@@ -40,6 +40,19 @@ tests/
 docs/
 ```
 
+## 平台分发
+
+综合池到平台池的分发建议由 `app/services/platform_router.py` 负责。
+
+当前实现：
+
+- `LLMPlatformRouter`
+- 规则层基础分与硬约束。
+- LLM 编辑判断和平台适配解释。
+- API：`POST /api/topic-assets/{asset_id}/routing`
+
+分发建议只供人工确认，不自动加入平台池，不自动生成发布内容。
+
 ## 核心生成链路
 
 ```text

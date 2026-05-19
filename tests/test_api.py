@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 import app.api.routes as routes
 from app.main import app
+from app.llm.client import MockLLMClient
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
 from app.services.topic_asset_service import TopicAssetService
@@ -150,6 +151,35 @@ def test_topic_asset_api(monkeypatch):
     assert update_response.status_code == 200
     assert update_response.json()["status"] == "researched"
     assert update_response.json()["research_status"] == "complete"
+
+
+def test_topic_asset_routing_api(monkeypatch):
+    test_root = Path(".rag_index") / f"api-topic-routing-test-{uuid4().hex}"
+    monkeypatch.setattr(routes, "TopicAssetService", lambda: TopicAssetService(root=test_root))
+    monkeypatch.setattr(routes, "build_llm_client", lambda settings: MockLLMClient())
+    client = TestClient(app)
+
+    create_response = client.post(
+        "/api/topic-assets",
+        json={
+            "canonical_title": "平台售后规则引争议",
+            "summary": "适合判断是否进入微博、知乎或视频产线。",
+            "source_platforms": ["weibo"],
+            "hot_signals": {"weibo_score": 88, "zhihu_score": 76},
+            "tags": ["consumer"],
+            "risk_level": "low",
+            "research_status": "needed",
+            "status": "candidate",
+        },
+    )
+    asset = create_response.json()
+    routing_response = client.post(f"/api/topic-assets/{asset['id']}/routing")
+
+    assert routing_response.status_code == 200
+    body = routing_response.json()
+    assert body["topic_asset_id"] == asset["id"]
+    assert body["llm_used"] is True
+    assert {item["target_platform"] for item in body["decisions"]} == {"weibo", "zhihu", "video"}
 
 
 def test_create_and_update_draft(monkeypatch):

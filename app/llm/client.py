@@ -69,6 +69,38 @@ class MockLLMClient(BaseLLMClient):
                 "critique_angles": ["先讲事实，再讲判断", "批评行为和机制，不攻击个人"],
                 "usable_lines": ["热闹可以追，结论最好慢半拍。", "真正值得看的，是这件事暴露出的规则缝隙。"],
             }
+        if "platformroutingschema" in lowered:
+            return {
+                "decisions": [
+                    {
+                        "target_platform": "weibo",
+                        "fit_score": 82,
+                        "decision": "recommended",
+                        "reasons": ["话题有即时讨论空间，适合短评切入。"],
+                        "blockers": [],
+                        "suggested_angle": "从公共讨论中的冲突点切入，先给判断再补边界。",
+                        "required_research": ["补充可靠来源和关键事实时间线"],
+                    },
+                    {
+                        "target_platform": "zhihu",
+                        "fit_score": 74,
+                        "decision": "optional",
+                        "reasons": ["具备解释空间，但需要更多背景资料支撑。"],
+                        "blockers": ["资料不足时不适合直接写长回答"],
+                        "suggested_angle": "改写成如何看待类问题，展开规则、责任和影响。",
+                        "required_research": ["补充来源链接", "确认争议各方公开回应"],
+                    },
+                    {
+                        "target_platform": "video",
+                        "fit_score": 48,
+                        "decision": "not_recommended",
+                        "reasons": ["视觉化表达空间一般。"],
+                        "blockers": ["如果涉及真实公共事件，需要避免误导性画面"],
+                        "suggested_angle": "暂不作为视频优先选题。",
+                        "required_research": [],
+                    },
+                ]
+            }
         return {
             "one_liner": "这事别急着站队，先把事实和情绪分开看。",
             "short_comment": "目前公开信息还有限，能写的是规则和表达问题，不能把猜测写成定论。热搜可以快，判断要稳。",
