@@ -1,918 +1,121 @@
 # AGENTS.md
 
-## 项目目标
+## 项目定位
 
-把现有微博运营资料升级为 HotComment-AI：一个面向少数自有/朋友账号的热点选题、背景材料整理、本地知识库检索、风格化锐评草稿生成、安全审查、MCP 工具调用和人工审核的中文内容工作台。
+HotComment-AI 是面向少数自有/朋友账号的人机协同内容运营工作台，用于热点选题、背景资料整理、本地知识库检索、风格化锐评草稿生成、安全审查、MCP 工具调用和人工审核。
 
-项目定位不是“自动发微博机器人”，也不是矩阵号、刷量或批量互动系统，而是：
-
-```text
-少数账号的人机协同内容运营工作台
-+ 热点锐评草稿生成工具
-+ MCP 工具服务
-+ 候选池与草稿箱
-+ 人工审核机制
-```
-
-默认只服务少数自有/朋友账号的人工运营流程。AI 负责提高选题、资料整理和草稿生产效率；人负责判断、审核、修改和发布。
+项目不是自动发微博机器人，也不是矩阵号、刷量或批量互动系统。
 
 明确不做：
 
-- 自动发布微博。
-- 自动评论、自动转发、自动点赞。
+- 自动发布微博、知乎回答或视频内容。
+- 自动评论、自动转发、自动点赞、自动关注、自动私信。
 - 批量互动、刷量、养号矩阵。
 - 规避平台风控或限制。
 - 诱导网暴、搬运谣言或扩散未经核验的敏感信息。
 
-## 最新方案文档
+AI 负责提高选题、资料整理和草稿生产效率；人负责判断、审核、修改和发布。
 
-最新技术框架和实现路径以仓库根目录这份用户总纲为准：
+## 权威文档
+
+最高优先级产品/技术总文档：
 
 ```text
 微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md
 ```
 
-这份文档是项目的最高优先级产品/技术总文档，用于指导 Codex、AI Agent 和开发者理解项目目标、边界、架构和实现路径。
-
-仓库内另有同步整理版：
+同步整理版：
 
 ```text
 docs/HotComment-AI技术方案.md
 ```
 
-如果两份文档内容出现冲突，以根目录 `微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md` 为准，再同步更新 `docs/HotComment-AI技术方案.md` 和 `AGENTS.md`。
-
-重点阅读章节：
-
-- `3A. 现实工程实现路径与 GitHub 参考方案`
-- `3B. Codex / MCP 插件化与自动化任务设计`
-- `3B.4 MCP 工具服务设计`
-- `3B.11 自动化任务设计`
-- `3B.13 草稿箱机制设计`
-- `3B.16 给 Codex 的新增任务：实现 MCP Server`
-- `3B.17 给 Codex 的新增任务：实现自动化草稿系统`
-- `3B.18 给 Codex 的新增任务：实现草稿箱`
-
-## 当前已完成
-
-### 文档
-
-- 已将根目录 `微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md` 确立为项目总纲和最高优先级方案文档。
-- `docs/HotComment-AI技术方案.md` 作为同步整理版，用于保持 docs 目录内的技术方案索引连续。
-- 已更新 `docs/README.md`，说明项目已进入 MCP / 自动化方向。
-- README 已包含 FastAPI、RAG、DeepSeek 和 MCP 的基础启动说明。
-
-### FastAPI 核心服务
-
-已实现：
-
-- `GET /`
-- `GET /health`
-- `GET /api/hot/weibo`
-- `POST /api/comment/generate`
-- `GET /api/comment/personas`
-- `GET /api/comment/styles`
-- `GET /api/accounts`
-- `POST /api/topics/select`
-- `POST /api/knowledge/rebuild`
-- `POST /api/knowledge/search`
-
-核心链路：
+Agent 交接分卷：
 
 ```text
-topic + context_text
--> FactSummarizer
--> TopicClassifier
--> RAG 检索
--> OpinionGenerator
--> PersonaRewriter
--> SafetyChecker
--> GenerateCommentResponse
+docs/agent_handbook/README.md
+docs/agent_handbook/current_status.md
+docs/agent_handbook/workflow.md
+docs/agent_handbook/architecture.md
+docs/agent_handbook/backlog.md
+docs/agent_handbook/pitfalls.md
+docs/agent_handbook/deployment.md
+docs/agent_handbook/platform_weibo.md
+docs/agent_handbook/platform_zhihu.md
+docs/agent_handbook/platform_video.md
 ```
 
-### 选题推荐
+如果根目录总纲与其他文档冲突，以根目录总纲为准，再同步更新 docs 和本文件。
 
-已实现热搜选题推荐与候选池第一版：
+## 当前状态摘要
 
-- `app/services/topic_selection_service.py`
-- `app/services/topic_research_service.py`
-- `app/services/candidate_pool_service.py`
-- `POST /api/topics/select`
-- `POST /api/topic-candidates/pools`
-- `GET /api/topic-candidates/pools`
-- `GET /api/topic-candidates/pools/{pool_id}`
-- `PATCH /api/topic-candidates/pools/{pool_id}/items/{item_id}`
-- MCP 工具 `select_comment_topics`
+已完成：
 
-当前能力：
+- FastAPI 核心服务与生成链路。
+- 微博热搜 Cookie 抓取、登录失效识别、fallback 和热度字段清洗。
+- 热搜选题推荐与微博候选池 MVP。
+- TopicAsset 综合池 MVP。
+- Streamlit 工作台第一版。
+- 草稿箱第一版。
+- 本地 RAG 与人工背景资料入库。
+- MCP 最小工具服务。
+- 轻量多账号配置与表达风格配置。
+- 知乎回答草稿 MVP 与知乎垂直领域适配。
 
-- 可输入热搜前 50，输出 3-5 个值得人工审核的锐评选题。
-- 输出字段包括 `score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
-- 候选池已升级为多产线候选池雏形，新增 `target_platform_scores`、`recommended_targets`、`zhihu_question_title`、`zhihu_answer_angle`、`zhihu_required_research`、`zhihu_reason`、`zhihu_domain_scores`、`zhihu_recommended_domain`、`zhihu_domain_reason`。
-- 已新增 `app/services/zhihu_topic_fit_service.py`，为知乎回答独立计算解释空间、论证深度、资料可得性、长尾搜索价值和垂直领域适配。
-- 已新增 `configs/zhihu_domains.json` 和 `app/services/zhihu_domain_service.py`，当前包含品牌公关、消费维权、职场、年轻人生活、文娱传播 5 个知乎垂直领域。
-- 可选 `enrich_metrics=true` 对候选题做二次采样，补充 `read_count`、`discussion_count`、`sampled_posts_count`、`controversy_score` 并参与评分。
-- 可将选题推荐保存为候选池 JSON，默认目录为 `output/topic_candidates/`。
-- 候选项支持人工状态流转：`candidate`、`selected`、`skipped`、`researched`，并可记录人工备注 `operator_note`。
-- 已对政务公告、外交、司法、未成年人、灾难等高风险或低评论空间话题做降权。
-- 风险等级不参与评分，只作为单独提示；低评论空间/纯通稿类仍可因账号适配度低而降权。
-- 只做选题推荐，不自动生成发布内容，不自动发布。
-
-### TopicAsset 综合池
-
-已实现综合池第一版：
-
-- `app/services/topic_asset_service.py`
-- `POST /api/topic-assets`
-- `GET /api/topic-assets`
-- `GET /api/topic-assets/{asset_id}`
-- `PATCH /api/topic-assets/{asset_id}`
-- Streamlit 已新增“综合池” tab。
-- 支持手动创建选题资产。
-- 支持从微博候选池选中候选项后加入综合池。
-- 支持查看综合池列表、详情，并更新状态、风险等级、资料状态和摘要。
-
-当前定位：
-
-- 综合池只保存选题资产通用信息：标题、摘要、来源平台、来源链接、热度信号、标签、风险等级、资料状态和生命周期状态。
-- 不在综合池里保存微博角度、知乎回答角度或视频分镜；这些属于后续平台池。
-- 默认存储目录：`output/topic_assets/`。
-
-### 账号配置与表达风格
-
-已预留轻量多账号配置，不做完整登录/权限系统：
-
-- `accounts/today_direct.json`
-- `app/services/style_service.py`
-- `GET /api/accounts`
-- `GET /api/comment/styles`
-
-当前规则：
-
-- 项目内统一把 `rational_critic`、`ironic_observer`、`pr_critic`、`angry_netizen` 理解为“表达风格”，不是虚构人格。
-- 生成接口新增 `account_id` 和 `style`，旧字段 `persona` 暂时保留兼容。
-- 账号配置包含 `default_style`、`allowed_styles`、`blocked_styles_for_high_risk`、`preferred_topics`、`risk_policy`。
-- 高风险话题会禁用不合适的高情绪/嘲讽风格，自动切到 `rational_critic`。
-- 后续多账号管理应基于账号配置扩展，不要把账号差异硬编码进生成逻辑。
-
-### Streamlit 工作台
-
-已实现 Streamlit 前端工作台第一版：
-
-- `app_ui/streamlit_app.py`
-- 通过 `API_BASE_URL` 调用 FastAPI，不复制业务逻辑。
-- 支持生成今日热搜候选池。
-- 支持查看候选池列表与详情。
-- 支持人工多选并批量标记候选项状态：`candidate`、`selected`、`skipped`、`researched`。
-- 支持对 `selected` / `researched` 候选题人工粘贴背景资料、来源 URL、可信度和备注，保存到知识库并重建 RAG。
-- 支持在候选池审核页按候选题查看已入库背景资料列表和详情。
-- 支持从 `selected` 候选题生成草稿并保存到草稿箱。
-- 支持查看草稿、人工编辑正文、更新审核状态。
-- 支持查看账号配置与表达风格。
-
-短期部署建议已调整为 Streamlit Community Cloud 方案 B：
-
-```text
-Streamlit Community Cloud
--> 本地服务模式直接调用 app/services
--> 不单独部署 FastAPI
-MCP 暂时本地跑
-```
-
-Streamlit App 配置：
-
-```text
-Repository: liqiyi834-design/weibo-ops
-Branch: main
-Main file path: app_ui/streamlit_app.py
-```
-
-Secrets 至少配置：
-
-```toml
-OPENAI_API_KEY = "..."
-OPENAI_BASE_URL = "https://api.deepseek.com"
-OPENAI_MODEL = "deepseek-v4-flash"
-USE_OPENAI_EMBEDDINGS = "false"
-WEIBO_COOKIE = "..."
-```
-
-默认不填 `API_BASE_URL`，工作台会直接调用 `app/services`。后续如果单独部署 FastAPI，再填 `API_BASE_URL` 并切换到 FastAPI 模式。
-
-注意：Streamlit Community Cloud 的文件系统只适合试用和轻量协作，不应视为长期数据库。当前候选池写入 `output/topic_candidates/`；正式协作后续建议接外部持久化存储或独立 FastAPI 后端。
-
-本地启动：
-
-```powershell
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-streamlit run app_ui/streamlit_app.py
-```
-
-MCP 不暴露公网，继续本地调用。
-
-### 真实模型接入
-
-已实现 OpenAI-compatible LLM client：
-
-```text
-app/llm/client.py
-```
-
-当前可用 DeepSeek：
-
-```text
-OPENAI_BASE_URL=https://api.deepseek.com
-OPENAI_MODEL=deepseek-v4-flash
-USE_OPENAI_EMBEDDINGS=false
-```
-
-API key 只放 `.env`，不要提交。
-
-### RAG
-
-已实现本地 RAG：
-
-- `app/rag/knowledge.py`
-- `app/rag/retriever.py`
-- `app/rag/embeddings.py`
-- `app/rag/vector_store.py`
-- `app/services/knowledge_service.py`
-
-当前策略：
-
-- 默认使用本地 hash embedding，不依赖外部 embedding API。
-- 可选 OpenAI-compatible embedding：`USE_OPENAI_EMBEDDINGS=true`。
-- `.rag_index/` 为本地索引目录，已忽略，不提交。
-- 没有向量索引时 fallback 到 `KeywordRetriever`。
-
-当前会索引：
-
-- `app/knowledge/**/*.md`
-- `04_人设与风格规则.md`
-- `06_草稿生成提示词.md`
-- `08_高热博文公开样本研究.md`
-- `10_爆款博文写作公式.md`
-- `12_事实核查与风险分级.md`
-- `24_高互动正文分析标准.md`
-
-已验证一次索引统计：
-
-```text
-document_count: 9
-chunk_count: 21
-```
-
-已实现人工背景资料入库第一版：
-
-- 新增 `app/services/knowledge_ingestion_service.py`。
-- 新增 API：`POST /api/knowledge/ingest`。
-- 新增 API：`GET /api/knowledge/inbox`、`GET /api/knowledge/inbox/{record_id}`，可查看入库记录列表和详情。
-- 默认保存到 `app/knowledge/inbox/`，记录 topic、source_url、source_title、credibility、needs_review、candidate_pool_id、candidate_item_id、created_at。
-- 可保存后自动调用 `KnowledgeService.rebuild()`。
-- Streamlit 候选池审核页已接入人工背景资料入库入口，并可查看同一候选题已入库的背景资料正文。
-- 当前只做人审后的手动入库，不自动搜索、不自动抓取网页。
-
-### MCP 最小版
-
-已新增：
-
-```text
-mcp_server/server.py
-mcp_server/tools.py
-```
-
-当前 MCP 工具：
-
-- `get_hot_topics`
-- `select_comment_topics`
-- `generate_comment`
-- `save_draft`
-- `list_drafts`
-- `update_draft`
-- `rebuild_knowledge`
-- `search_knowledge`
-
-启动：
-
-```powershell
-python -m mcp_server.server
-```
-
-已验证：
-
-```text
-python -c "from mcp_server.server import mcp; print(mcp.name)"
-```
-
-输出：
-
-```text
-weibo-ops-hotcomment
-```
-
-### 测试
-
-当前测试：
-
-```text
-tests/test_api.py
-tests/test_hot_sources.py
-tests/test_pipeline.py
-tests/test_rag.py
-tests/test_safety_checker.py
-tests/test_mcp_tools.py
-tests/test_candidate_pool.py
-tests/test_topic_selection.py
-tests/test_topic_research.py
-tests/test_style_service.py
-tests/test_draft_service.py
-tests/test_knowledge_ingestion.py
-tests/test_zhihu_domain_service.py
-tests/test_topic_asset_service.py
-```
-
-已验证：
+最新验证：
 
 ```powershell
 python -m pytest tests -q -p no:cacheprovider
 ```
 
-当前最新结果：
+当前结果：
 
 ```text
 51 passed
 ```
 
-## 2026-05-14 补充交接
-
-- 已新增文娱榜抓取能力：`HotSearchService.get_weibo_ent_topics()`，底层通过微博 `top/summary?cate=entrank`，沿用本地 `.env` 的 `WEIBO_COOKIE`，不写入代码。
-- 已新增 MCP 工具：`get_ent_topics`，用于同步获取微博文娱榜；`get_hot_topics` 仍用于实时热搜榜。
-- 当前验证：`py -m pytest tests -q -p no:cacheprovider`，结果 `28 passed`。
-- 运营采样结论：热搜内高评论博文通常不是单纯复述事实，而是给评论区留下可站队的缝，例如“谁更委屈/谁该让步/是不是营销/是不是过度解读/你遇到会怎么选”。
-- 2026-05-14 晚间用 Cookie 采样过当前热搜/文娱榜：双榜重合包括 `给阿嬷的情书女主官宣入行`、`方媛坚持要住男生单人间`、`爸爸当家5嘉宾阵容`、`黄景瑜微博改名`、`宋亚轩和张杰女儿撞小名` 等；评论区最强互动来自生活资源冲突、粉圈站队、综艺人设评价、外交大事件中的细节解读。
-
-结果：
-
-```text
-51 passed
-```
-
-## 当前待提交改动
-
-当前工作区包含尚未提交的微博热搜热度字段清洗改动。提交前必须确认：
-
-- `.env` 不提交。
-- `.rag_index/` 不提交。
-- `__pycache__/` 不提交。
-- `pytest_tmp/` 不提交。
-
-建议提交信息：
-
-```text
-清洗微博热搜热度分类字段
-```
-
-## 重要经验与踩坑记录
-
-### DeepSeek 配置
-
-DeepSeek 通过 OpenAI-compatible 客户端接入。
-
-`.env` 示例：
-
-```text
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-你的真实DeepSeekKey
-OPENAI_BASE_URL=https://api.deepseek.com
-OPENAI_MODEL=deepseek-v4-flash
-USE_OPENAI_EMBEDDINGS=false
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-REQUEST_TIMEOUT_SECONDS=30
-KNOWLEDGE_DIR=app/knowledge
-RAG_INDEX_PATH=.rag_index/index.json
-```
-
-注意：
-
-- `OPENAI_API_KEY` 必须是真实 key，不能含中文、空格或引号。
-- `OPENAI_BASE_URL` 必须是 `https://api.deepseek.com`，不是 key。
-- DeepSeek 聊天模型已通过真实调用验证。
-
-### 代理问题
-
-本机环境曾有代理变量指向 `127.0.0.1`，但代理未启动，导致 SDK 报：
-
-```text
-LLM request failed: Connection error.
-```
-
-已在代码中通过 `httpx.Client(..., trust_env=False)` 让 LLM 和 embedding client 不继承坏代理环境变量。
-
-### LLM JSON 重试
-
-真实模型偶发会返回 `{}` 或缺少必要字段，导致 Pydantic 报 `Field required`，例如 `OpinionDraft.core_conflict` 缺失。
-
-已新增 `app/services/json_retry.py`，观点生成和风格改写会先检查必要字段；如果缺字段，会带缺失字段列表重试一次，只要求返回完整 JSON。第二次仍失败时才合并默认兜底，避免前端直接报 500。
-
-### PowerShell 中文显示
-
-PowerShell 中 `Invoke-RestMethod | ConvertTo-Json` 可能显示中文乱码，但服务返回结构和模型调用本身正常。不要仅凭 PowerShell 控制台乱码判断接口失败。
-
-### pytest 临时目录
-
-Windows 环境里 pytest cache/temp 目录曾出现权限问题。测试命令建议使用：
-
-```powershell
-python -m pytest tests -q -p no:cacheprovider
-```
-
-### 文档同步
-
-用户可能更新根目录项目总纲。若出现新版本，先查找：
-
-```powershell
-Get-ChildItem -Path E:\work\lqy -Filter '*微博热点人格化锐评AI项目技术框架及实现路径*.md'
-```
-
-主文档应保留/更新为：
-
-```text
-微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md
-```
-
-再同步整理到：
-
-```text
-docs/HotComment-AI技术方案.md
-```
-
-同步后还要更新 `AGENTS.md` 的“当前已完成”“下一步优先级”和关键踩坑记录。若根目录总纲与 docs 整理版冲突，以根目录总纲为准。
+详情见 [current_status.md](docs/agent_handbook/current_status.md)。
 
 ## 下一步优先级
 
-### P0：补齐 MCP 工具
+当前最值得推进的是：
 
-根据最新方案文档，下一批 MCP 工具应实现：
+1. P0：补齐 MCP 工具命名与能力，对齐总纲里的 `classify_topic`、`retrieve_knowledge`、`safety_check`。
+2. P1：实现综合池到平台池的规则分发建议，再预留 LLM 分发接口。
+3. P2：新增独立知乎问题池，停止把微博候选池长期兼作知乎候选池。
+4. P3：设计背景资料搜索/入库的人工审查流程，暂不做全自动网页抓取。
+5. P4：继续抽象多平台 HotTopicProvider，优先选择公开、低风险来源。
 
-- `classify_topic`
-- `retrieve_knowledge`
-- `safety_check`
-- `save_draft`
-- `list_drafts`
+完整待办见 [backlog.md](docs/agent_handbook/backlog.md)。
 
-其中 `get_hot_topics` 已完成；`retrieve_knowledge` 已由 `search_knowledge` 基本覆盖，但名称可后续对齐文档。
+## 当前工作流
 
-### P1：完善“值得锐评选题”推荐
-
-用户新增目标：
+简版流程：
 
 ```text
-爬取微博热搜前 50
--> AI 从事实性、争议度、表达空间、风险、账号匹配度、时效性等角度评价
--> 推荐 3-5 个最值得锐评的选题
--> 给出推荐理由、风险提示、建议角度
--> 最终由人决定选题
+微博热搜/后续多平台热榜
+-> 候选评分
+-> 微博候选池
+-> 人工选择 selected/researched
+-> 可加入综合池 TopicAsset
+-> 人工补充背景资料并入库 RAG
+-> 生成微博短评或知乎回答草稿
+-> 草稿箱人工编辑、审核、发布记录和复盘
 ```
 
-已完成第一版：
-
-- 新增 `app/services/topic_selection_service.py`。
-- 新增 `app/services/zhihu_topic_fit_service.py`。
-- 新增 `app/services/zhihu_domain_service.py`。
-- 新增 `app/services/topic_research_service.py`。
-- 新增 `app/services/candidate_pool_service.py`。
-- 输入 `HotTopic` / `HotSearchItem` 列表，默认可来自 `GET /api/hot/weibo?limit=50`。
-- 输出候选评分：`score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
-- 输出多产线适配：微博分、知乎分、推荐产线、知乎问题标题、知乎回答角度、知乎所需补充资料、知乎推荐领域和领域匹配理由。
-- 新增 API：`POST /api/topics/select`。
-- 新增候选池 API：`POST /api/topic-candidates/pools`、`GET /api/topic-candidates/pools`、`GET /api/topic-candidates/pools/{pool_id}`、`PATCH /api/topic-candidates/pools/{pool_id}/items/{item_id}`。
-- 新增 MCP 工具：`select_comment_topics`。
-- 新增二次采样服务 `TopicResearchService`，可从公开微博搜索页解析阅读量、讨论量、采样内容数量和争议度。
-- 新增候选池服务 `CandidatePoolService`，可保存候选池并支持人工把候选项标记为 `selected`、`skipped`、`researched`。
-- 已测试 3-10 条输出、风险提示不影响评分、理由字段非空、二次采样指标参与评分、候选池保存和人工状态更新。
-
-后续优化：
-
-- 引入 LLM 二次评审，让推荐理由更像编辑判断而不是纯规则。
-- 加强分类词表，例如演唱会、游戏、汽车、消费电子等。
-- 校准微博搜索页 `read_count` / `discussion_count` 解析，避免页面混杂数字导致误读。
-- 支持人工选择某个候选后触发背景资料搜索与知识库入库。
-
-### P2：草稿箱
-
-已实现草稿箱第一版。
-
-已实现目录：
-
-```text
-output/drafts/
-```
-
-已实现能力：
-
-- 保存生成结果为 JSON。
-- 记录 topic、account_id、style、risk_level、candidate_pool_id、candidate_item_id、created_at、updated_at。
-- 支持人工编辑正文 `edited_text` 和审核备注 `operator_note`。
-- 不自动发布。
-
-已实现 API：
-
-- `POST /api/drafts`
-- `GET /api/drafts`
-- `GET /api/drafts/{draft_id}`
-- `PATCH /api/drafts/{draft_id}`
-
-已实现 MCP 工具：
-
-- `save_draft`
-- `list_drafts`
-- `update_draft`
-
-已接入 Streamlit：
-
-- 从 `selected` 候选题生成草稿。
-- 查看草稿列表和详情。
-- 保存人工编辑正文、审核状态和备注。
-
-### P2A：多账号与表达风格配置
-
-已完成轻量预留：
-
-- 默认账号配置：`accounts/today_direct.json`
-- 风格服务：`app/services/style_service.py`
-- API：`GET /api/accounts`、`GET /api/comment/styles`
-- 生成接口支持 `account_id`、`style`，并兼容旧 `persona` 字段。
-- 高风险话题会根据账号配置自动禁用 `angry_netizen`、`ironic_observer` 等不合适风格。
-
-后续评级：P2A，重要但不阻塞当前选题/候选池闭环。
-
-后续优化：
-
-- 支持新增多个账号 JSON，例如公关观察、打工人嘴替等。
-- 候选池、草稿箱和知识库资料都应带 `account_id`。
-- 前端展示账号切换和风格选择。
-- 逐步把内部命名从 `persona` 迁移到 `style`，保留兼容期。
-
-### P2B：多平台内容草稿类型与知乎 MVP
-
-用户新增方向：
-
-```text
-多平台运营
--> 不只是微博短锐评
--> 支持知乎等平台的内容草稿生产
--> 人工审核、人工发布、人工记录链接和数据
-```
-
-产品定位：
-
-- 这是“多平台内容生产与复盘”，不是“多平台自动发布/自动互动”。
-- 第一阶段优先做知乎 MVP，因为知乎更适合解释型、论证型、长回答内容。
-- 微博草稿与知乎回答应共享选题、背景资料、RAG 和安全审查，但使用不同生成器和不同输出结构。
-
-推荐新增字段：
-
-- `platform`: `weibo` / `zhihu` / `video` / 后续平台。
-- `draft_type`: `micro_comment` / `zhihu_answer` / `video_script`。
-- `published_url`: 人工发布后的链接。
-- `published_at`: 人工发布时间。
-- `performance_note`: 人工记录的数据和复盘备注。
-
-知乎回答推荐结构：
-
-- `question_title`
-- `answer_title`
-- `opening_judgement`
-- `background_summary`
-- `core_argument`
-- `supporting_points`
-- `counter_arguments`
-- `risk_notes`
-- `answer_body`
-- `references`
-
-推荐实现：
-
-- 已新增 `ZhihuAnswerGenerator`，复用 `FactSummarizer`、`TopicClassifier`、RAG、`OpinionGenerator` 和表达风格配置。
-- 已新增 API：`POST /api/zhihu/answer/generate`、`POST /api/drafts/zhihu`。
-- 已新增知乎垂直领域配置：`configs/zhihu_domains.json`，生成知乎回答时会注入推荐领域、领域说明、推荐角度和避坑点。
-- 草稿模型已新增 `platform`、`draft_type`、`published_url`、`published_at`、`performance_note`。
-- Streamlit 已在候选题草稿入口增加“生成知乎回答”按钮。
-- 草稿箱已支持展示知乎回答结构，并可记录人工发布链接、发布时间和复盘备注。
-- 草稿箱已支持按 `platform`、`draft_type`、`status` 筛选。
-
-知乎选题适配：
-
-- 适合品牌、公关、平台规则、消费、职场、社会观察和“如何看待”类问题。
-- 不适合纯情绪宣泄、未核实爆料、短平快吃瓜和强攻击个人的内容。
-
-架构决策：
-
-- 微博候选池和知乎候选池必须拆开，不能长期把微博热搜 50 条直接作为知乎候选池。
-- 现有 `CandidatePool` 语义上先视为微博候选池；其中知乎分、知乎领域字段是过渡方案，后续不要继续往 `CandidatePoolItem` 塞更多知乎字段。
-- 知乎应该新增独立问题池：
-  - `ZhihuQuestionPool`
-  - `ZhihuQuestionCandidate`
-  - `ZhihuQuestionPoolService`
-- 知乎候选来源应独立于微博热搜：
-  - `manual_url`
-  - `generated_from_topic`
-  - `zhihu_hot_list`
-  - `zhihu_search`
-  - `zhihu_home_feed`，后续如果使用 cookie，只读问题候选和可见数据。
-- 知乎问题候选字段建议：
-  - `question_title`
-  - `question_url`
-  - `source`
-  - `follow_count`
-  - `view_count`
-  - `answer_count`
-  - `domain`
-  - `domain_score`
-  - `question_quality_score`
-  - `answer_opportunity_score`
-  - `search_value_score`
-  - `zhihu_score`
-  - `reason`
-  - `answer_angle`
-  - `required_research`
-  - `risk_notes`
-  - `status`
-- 知乎评分重点不是热搜热度，而是领域适配、问题质量、关注/浏览与回答供给差、搜索长尾价值、资料支撑和回答空间。
-- 后续 Streamlit 应新增“知乎问题池”页面：手动添加问题标题/URL、从 TopicAsset 或微博候选生成问题候选、查看知乎评分、标记 selected、生成知乎回答。
-
-实现边界：
-
-- 不自动发布知乎回答。
-- 不自动评论、点赞、关注、私信。
-- 不批量运营账号，不做矩阵号或绕过平台限制。
-
-### P3：知识库自动学习与背景资料入库
-
-用户新增目标：
-
-```text
-选题确定后
--> AI / Codex 智能体自动搜索相关背景信息、公开消息、来源链接
--> 提取摘要、事实点、争议点、时间线、风险提示
--> 保存进本地知识库
--> 重建或增量更新 RAG
--> 后续生成草稿时可检索查阅
-```
-
-实现说明：
-
-- 这项能力必须只采集公开信息，不读取私信、登录态隐私、付费墙或敏感账号信息。
-- 资料入库前要保存来源 URL、抓取时间、摘要、可信度、是否需要人工确认。
-- 未核实信息不得写成确定事实，应该标注“待核验”。
-- 已完成手动入库与查看第一版：`app/knowledge/inbox/`、`app/services/knowledge_ingestion_service.py`、`POST /api/knowledge/ingest`、`GET /api/knowledge/inbox`、`GET /api/knowledge/inbox/{record_id}`。
-- 已支持候选池审核页从 `selected` / `researched` 话题粘贴背景资料并重建 RAG。
-- 已支持候选池审核页查看同一候选题已入库的背景资料列表、来源、可信度、摘要和正文详情。
-- 已支持 RAG 递归索引 `app/knowledge/**/*.md`。
-- 推荐后续新增服务：`app/services/research_service.py`。
-- 推荐新增 MCP 工具：`research_topic`、`ingest_topic_research`。
-- 推荐后续新增 API：`POST /api/research/topic`。
-- 入库后调用现有 `KnowledgeService.rebuild()` 或后续增量索引。
-- 自动搜索需要明确来源白名单/黑名单、请求频率和失败 fallback，避免把低质搬运内容污染 RAG。
-
-### P3A：综合池到平台池的 LLM 分发建议
-
-用户新增方向：
-
-```text
-TopicAsset 综合池
--> 规则层计算基础特征和硬约束
--> LLM 做编辑判断与平台适配建议
--> 人工确认是否进入微博候选池 / 知乎问题池 / 视频创意池
-```
-
-设计原则：
-
-- LLM 可以参与分发建议，但不能单独拍板。
-- 系统只给推荐去向、理由、阻碍和建议角度，不自动加入平台池。
-- 人工最终确认是否进入某个平台池。
-- 不自动生成发布内容，不自动发布，不自动互动。
-
-推荐新增结构：
-
-- `PlatformRoutingDecision`
-- `RuleBasedPlatformRouter`
-- `LLMPlatformRouter`
-
-推荐输出字段：
-
-- `topic_asset_id`
-- `target_platform`
-- `fit_score`
-- `decision`: `recommended` / `optional` / `not_recommended`
-- `reasons`
-- `blockers`
-- `suggested_angle`
-- `required_research`
-
-推荐流程：
-
-```text
-TopicAsset
--> RuleBasedPlatformRouter
-   - 微博：热度、时效、冲突、评论钩子、风险
-   - 知乎：领域匹配、问题质量、资料支撑、长尾搜索、回答空间
-   - 视频：视觉化、反差、可生成性、制作成本、风险
--> LLMPlatformRouter
-   - 补充编辑判断
-   - 解释为什么适合/不适合某个平台
-   - 发现资料缺口和潜在风险
--> 前端展示
--> 人工点击“加入微博池 / 加入知乎问题池 / 加入视频创意池 / 忽略”
-```
-
-硬约束建议仍由规则层负责：
-
-- 高风险司法、未成年人、灾难、政治敏感等话题默认限制情绪化微博短评。
-- 未核实爆料不推荐进入知乎长回答或视频创意。
-- 缺少可靠来源时，知乎进入 `required_research`，不直接生成回答。
-
-### P4：热搜 Provider 与热榜清洗
-
-当前微博热搜 Cookie 抓取已可用，已验证 `GET /api/hot/weibo?limit=50` 能返回 50 条。
-已修复 Cookie 失效时微博登录跳转未被识别的问题；当返回登录页或重定向到登录域名时会降级 fallback 并在 error 中提示 Cookie 失效。
-已新增 `category_label` 字段，用于保存 `电影`、`综艺`、`剧集` 等热搜分类；`hot_value` 只保留纯数字热度，避免 `综艺 126022` 混入评分和展示。
-
-已实现接口：
-
-```text
-GET /api/hot/weibo
-```
-
-已实现 MCP 工具：
-
-```text
-get_hot_topics
-```
-
-后续清洗待办：
-
-- 抽象多平台 `HotTopicProvider` 接口，统一不同平台热榜读取结果。
-- 将现有微博热搜实现迁移为 `weibo` provider，保持现有 API 行为兼容。
-- API 后续支持 `platform=weibo`、`platform=all` 或指定多个平台。
-- 候选池中保留来源平台、来源链接、原始排名和平台热度字段。
-- 第二个平台优先选择公开、低风险、无需账号操作的来源，例如百度热搜、知乎热榜或 B 站热榜。
-- 后续支持跨平台同题聚合：同一事件出现在多个平台时合并展示，并把“跨平台讨论广度”作为选题参考因素。
-- 根据运营策略决定是否过滤置顶、政务、低评论空间话题。
-
-多平台边界：
-
-- 只做多平台选题、热榜观察和公开背景资料整理。
-- 不做多平台自动发布、自动评论、自动点赞、自动转发、私信、关注、批量养号或绕过平台限制。
-
-### P5：自动化任务
-
-自动化任务只生成候选草稿，不自动发布。
-
-待实现：
-
-- `fetch_hot_topics_job`
-- `classify_hot_topics_job`
-- `generate_drafts_job`
-- `daily_digest_job`
-
-后续可以结合 Codex automations 做定时任务。
-
-### P6：AI 视频创意与提示词包产线
-
-用户新增方向：
-
-```text
-低成本 / 低质量 AI 生成视频
--> 不以热点为唯一出发点
--> 通过主题、栏目、风格、爆款结构和模型能力生成视频创意
--> 输出脚本文案、分镜稿、关键帧提示词、视频生成提示词、封面字和发布文案
--> 人工选择和制作
-```
-
-产品定位：
-
-- 这是独立于热点锐评的第二条内容产线，不复用“热搜候选池”的产品逻辑。
-- 核心不是自动生成视频，而是生成可供人工筛选和投喂视频工具的“创意与提示词资产包”。
-- 适合先人工使用可灵、即梦、Runway、Sora 等视频工具试效果，后续再评估是否接 API。
-
-推荐工作流：
-
-```text
-选择账号 / 栏目 / 题材方向 / 表达风格
--> AI 生成 10 个视频创意
--> 人工选择 1-3 个
--> 生成脚本文案 + 分镜稿 + 视频提示词包
--> 人工修改
--> 标记为可制作 / 已制作 / 废弃
-```
-
-推荐新增模型：
-
-- `CreativeIdeaPool`
-- `CreativeIdea`
-- `VideoScriptDraft`
-- `VideoPromptPack`
-
-推荐状态：
-
-- `idea`
-- `selected`
-- `scripted`
-- `prompted`
-- `produced`
-- `discarded`
-
-推荐输出字段：
-
-- `video_concept`
-- `target_platform`
-- `duration_seconds`
-- `style`
-- `script_copy`
-- `shot_list`
-- `image_prompts`
-- `video_prompts`
-- `negative_prompts`
-- `caption`
-- `title_options`
-- `cover_text`
-- `risk_notes`
-- `production_notes`
-
-实现边界：
-
-- 不自动发布视频。
-- 不自动批量搬运素材。
-- 不生成仿冒真人、侵犯肖像或误导性真实事件视频。
-- 对新闻、公共事件、真人相关内容必须保留事实核验和人工审核。
-
-优先级建议：P6，先完成热点候选池、知识库和多平台 Provider 后再进入实现。
-
-### P7：RAG 升级
-
-当前 RAG 是本地 hash embedding。后续可以考虑：
-
-- Chroma
-- OpenAI-compatible embedding
-- 更好的中文分词
-- 文档元数据
-- `/api/knowledge/rebuild` 支持指定目录
+综合池不是平台池。微博、知乎、视频的候选逻辑应逐步拆开。详情见 [workflow.md](docs/agent_handbook/workflow.md)。
 
 ## 开发规则
 
 - git 提交信息使用中文。
-- 不在代码中硬编码 API key。
-- API key 通过 `.env` 或环境变量传入。
+- 不在代码中硬编码 API key、Cookie、token 或私密账号信息。
+- API key、Cookie 只通过 `.env`、Streamlit secrets 或环境变量传入。
 - 真实模型调用必须通过 `app/llm` 抽象层。
 - 路由只负责接收请求和调用服务，不混入业务逻辑。
-- MCP 只作为适配层，核心逻辑应复用 `app/services`。
+- MCP 只作为适配层，核心逻辑复用 `app/services`。
 - 高风险话题必须降低情绪强度。
 - 所有生成结果默认进入草稿或返回待审核，不自动发布。
 - 多账号只用于少数自有/朋友账号的差异化配置，不用于矩阵号、养号或批量操控。
-- 不实现自动发布、自动评论、自动转发点赞、批量互动、刷量或绕过平台风控能力。
-
-## AGENTS.md 维护原则
-
-`AGENTS.md` 是本项目跨线程交接的主入口。每当项目状态发生实质变化时，都要同步更新它，确保新线程读完后能知道当前做到哪里、下一步做什么、有什么坑不能踩。
-
-### 必须更新的情况
-
-- 新增或删除核心模块、目录、API、MCP 工具、自动化任务。
-- 修改项目架构、技术路线、运行方式或环境变量。
-- 接入新的外部服务，例如 DeepSeek、微博热搜 Provider、Chroma、搜索 API。
-- 新增重要文档，或用户更新 `docs/HotComment-AI技术方案.md`。
-- 测试命令、启动命令、验证方式发生变化。
-- 发现新的关键踩坑、平台限制、安全边界或代理/编码/权限问题。
-- 完成某个 P0/P1/P2 待办，或调整待办优先级。
-- 提交前后如果有重要未提交状态、忽略文件、敏感文件风险，也要记录。
-
-### 应该写入的内容
-
-- 当前已完成能力。
-- 当前未完成但已明确的待办事项。
-- 最新方案文档的位置和重点章节。
-- 关键文件路径。
-- 运行、测试、重建 RAG、启动 MCP 的命令。
-- 已验证结果，例如 `9 passed`、真实 DeepSeek 调用已成功。
-- 关键经验，例如代理变量导致连接失败、PowerShell 中文乱码、pytest 权限问题。
-- 安全边界：少数账号人工运营；不自动发布、不自动评论、不自动转发点赞、不批量互动、不刷量、不绕过平台限制。
-
-### 不应该写入的内容
-
-- API key、token、cookie、私密账号信息。
-- `.env` 的真实内容。
-- 可用于绕过平台风控、批量互动、自动发布的具体操作指南。
-- 与当前项目无关的临时想法。
-
-### 更新风格
-
-- 用中文写。
-- 保持简洁，但要足够让新线程接手。
-- 优先写事实状态，不写含糊口号。
-- 待办事项按 P0/P1/P2/P3 排序。
-- 如果某项已完成，要从待办中移走或标注为已完成。
-- 如果同步了外部更新版文档，要记录来源文件名和同步到仓库的位置。
 
 ## 常用命令
 
@@ -928,16 +131,10 @@ python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-打开接口文档：
+启动 Streamlit：
 
-```text
-http://127.0.0.1:8000/docs
-```
-
-重建 RAG：
-
-```text
-POST /api/knowledge/rebuild
+```powershell
+streamlit run app_ui/streamlit_app.py
 ```
 
 启动 MCP：
@@ -951,3 +148,17 @@ python -m mcp_server.server
 ```powershell
 python -m pytest tests -q -p no:cacheprovider
 ```
+
+## AGENTS 维护规则
+
+`AGENTS.md` 只保留入口、硬规则、当前摘要和下一步。实质变化写入对应分卷：
+
+- 当前进度、测试结果、最近提交：`current_status.md`
+- 工作流变化：`workflow.md`
+- 架构变化：`architecture.md`
+- 待办和优先级：`backlog.md`
+- 坑点与经验：`pitfalls.md`
+- 部署方式：`deployment.md`
+- 平台产线：`platform_weibo.md`、`platform_zhihu.md`、`platform_video.md`
+
+不要把 API key、Cookie、token、真实账号隐私或可用于绕过平台限制的操作指南写入任何文档。
