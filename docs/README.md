@@ -16,11 +16,13 @@
 - `agent_handbook/workflow.md`：候选池、综合池、草稿箱、知识库的实际工作流。
 - `agent_handbook/architecture.md`：FastAPI、Streamlit、MCP、RAG 和服务层结构。
 - `agent_handbook/backlog.md`：P0-P7 待办和优先级。
+- `agent_handbook/hermes_agents.md`：Hermes agents / MCP 自动化编排接入方式和边界。
 - `agent_handbook/pitfalls.md`：DeepSeek、代理、Cookie、pytest、Streamlit Cloud 等踩坑记录。
 - `agent_handbook/deployment.md`：本地和 Streamlit Community Cloud 部署说明。
 - `agent_handbook/platform_weibo.md`：微博产线。
 - `agent_handbook/platform_zhihu.md`：知乎产线。
 - `agent_handbook/platform_video.md`：视频创意产线。
+- `../deployment/linux/README.md`：Ubuntu 云服务器部署、systemd、Nginx 和 Hermes gateway/cron。
 
 ## 可复用资料
 

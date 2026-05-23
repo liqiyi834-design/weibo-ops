@@ -1,0 +1,18 @@
+[Unit]
+Description=HotComment-AI Streamlit UI
+After=network-online.target weibo-ops-fastapi.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=weiboops
+Group=weiboops
+WorkingDirectory=/opt/weibo-ops
+Environment=PYTHONUNBUFFERED=1
+Environment=API_BASE_URL=http://127.0.0.1:8000
+ExecStart=/opt/weibo-ops/.venv/bin/streamlit run app_ui/streamlit_app.py --server.address 127.0.0.1 --server.port 8501 --server.headless true
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

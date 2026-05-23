@@ -1,0 +1,28 @@
+# Template only. Run tools\New-HermesMcpConfig.ps1 to generate a local config
+# with your own project path, then copy that block into ~/.hermes/config.yaml.
+# Keep secrets in this project's .env or process environment; do not paste API keys,
+# cookies, or account tokens into the Hermes config.
+
+mcp_servers:
+  hotcomment_ai:
+    command: "powershell"
+    args:
+      - "-NoProfile"
+      - "-ExecutionPolicy"
+      - "Bypass"
+      - "-File"
+      - "<PROJECT_ROOT>\\tools\\Start-HermesMcp.ps1"
+      - "-ProjectRoot"
+      - "<PROJECT_ROOT>"
+      - "-Python"
+      - "<PYTHON_EXE>"
+    tools:
+      include:
+        - get_hot_topics
+        - select_comment_topics
+        - classify_topic
+        - retrieve_knowledge
+        - generate_comment
+        - save_draft
+        - list_drafts
+        - safety_check

@@ -26,11 +26,56 @@ streamlit run app_ui/streamlit_app.py
 python -m mcp_server.server
 ```
 
+Hermes agents 调用 MCP 时推荐使用项目脚本：
+
+```powershell
+.\tools\Start-HermesMcp.ps1
+```
+
+多人协作时，每个 clone 本地生成自己的 Hermes 配置片段：
+
+```powershell
+.\tools\Test-HermesProjectPrereqs.ps1
+.\tools\New-HermesMcpConfig.ps1
+```
+
+Hermes 配置模板见：
+
+```text
+configs/hermes.mcp.example.yaml
+```
+
+生成的本机配置片段为 `configs/hermes.mcp.local.yaml`，已加入 `.gitignore`，不要提交。
+
+该片段会包含当前 clone 路径和当前 `python.exe` 绝对路径。Hermes 安装或项目路径变化后，重新运行 `.\tools\New-HermesMcpConfig.ps1` 并刷新 `~/.hermes/config.yaml`。
+
+运行 Hermes 工作流：
+
+```powershell
+.\tools\Invoke-HermesWorkflow.ps1 -Workflow daily_hot_topics_review
+```
+
 运行测试：
 
 ```powershell
 python -m pytest tests -q -p no:cacheprovider
 ```
+
+## Linux 云服务器
+
+单台 Ubuntu 部署说明见：
+
+```text
+deployment/linux/README.md
+```
+
+包含：
+
+- FastAPI systemd 服务。
+- Streamlit systemd 服务。
+- Hermes gateway/cron systemd 服务。
+- Nginx 反向代理样例。
+- Linux 版 Hermes MCP 配置生成脚本。
 
 ## Streamlit Community Cloud
 
@@ -76,6 +121,7 @@ MCP 暂时本地跑，不暴露公网。
 原因：
 
 - MCP 主要服务 Codex 自动化和本地工具调用。
+- Hermes agents 也应优先通过本地 MCP 白名单调用。
 - 当前不需要给 Streamlit Cloud 远程调用 MCP。
 - 避免把本地工具能力暴露到公网。
 

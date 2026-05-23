@@ -8,9 +8,10 @@
 2. `workflow.md`：实际运营和产品工作流。
 3. `architecture.md`：代码结构、服务边界、API/MCP/RAG/Streamlit。
 4. `backlog.md`：下一步优先级。
-5. `pitfalls.md`：已踩坑和注意事项。
-6. `deployment.md`：本地与 Streamlit Community Cloud 部署。
-7. 平台分卷：`platform_weibo.md`、`platform_zhihu.md`、`platform_video.md`。
+5. `hermes_agents.md`：Hermes agents / MCP 自动化编排接入方式和边界。
+6. `pitfalls.md`：已踩坑和注意事项。
+7. `deployment.md`：本地与 Streamlit Community Cloud 部署。
+8. 平台分卷：`platform_weibo.md`、`platform_zhihu.md`、`platform_video.md`。
 
 维护原则：
 

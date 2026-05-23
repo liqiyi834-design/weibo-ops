@@ -32,6 +32,8 @@ __pycache__/
 
 # Token/config files if created later
 .env
+configs/hermes.mcp.local.yaml
+ssh.txt
 *.secret
 *.token
 secrets/

@@ -121,18 +121,49 @@ TopicAsset
 - 第二个平台优先公开、低风险、无需账号操作的来源，例如百度热搜、知乎热榜、B 站热榜。
 - 支持跨平台同题聚合。
 
-## P5：自动化任务
+## P5：Hermes agents / MCP 自动化编排
 
-自动化任务只生成候选或草稿，不自动发布。
+Hermes agents 是后续自动化流程的重点编排层。接入方式优先使用现有 MCP Server；如果 Hermes 运行环境不方便启动本地 MCP，再用 FastAPI 作为 HTTP 适配层。
+
+自动化任务只生成候选、检索结果、审查结果、草稿或摘要，不自动发布、不自动互动、不直接操作微博/知乎/视频平台账号。
+
+建议首批 Hermes 工作流：
+
+- `daily_hot_topics_review`：定时读取热搜，筛选适合人工审核的话题，生成候选池摘要。
+- `draft_generation_queue`：从已选候选生成微博短评或知乎回答草稿，保存到草稿箱。
+- `safety_review_digest`：汇总高风险话题、blocked 草稿、安全审查问题和待人工处理项。
+- `knowledge_research_assist`：为人工选题生成公开资料搜索清单和入库候选，但入库前必须人工确认。
+
+Hermes 可调用的现有 MCP 工具：
+
+- `get_hot_topics`
+- `select_comment_topics`
+- `classify_topic`
+- `retrieve_knowledge`
+- `generate_comment`
+- `save_draft`
+- `list_drafts`
+- `safety_check`
 
 待实现：
 
+- Hermes MCP 启动脚本或配置样例。
+- Hermes 工作流提示词与工具白名单。
+- 自动化运行日志与失败记录。
+- 每日任务生成数量上限与节流策略。
 - `fetch_hot_topics_job`
 - `classify_hot_topics_job`
 - `generate_drafts_job`
 - `daily_digest_job`
 
-后续可结合 Codex automations 做定时任务。
+边界：
+
+- 不暴露 `publish_to_weibo`、自动评论、自动转发、自动点赞、自动关注、自动私信等工具。
+- 不让 Hermes 读取或输出 API key、Cookie、token、真实账号隐私。
+- 高风险话题只允许生成理性版候选或审查摘要，不能生成煽动性草稿。
+- 所有草稿默认进入草稿箱，由人编辑、审核、发布和复盘。
+
+后续可结合 Codex automations 做定时唤起，也可由 Hermes 自身调度。
 
 ## P6：AI 视频创意与提示词包产线
 

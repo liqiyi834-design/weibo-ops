@@ -1,0 +1,17 @@
+[Unit]
+Description=Hermes Gateway and Cron
+After=network-online.target weibo-ops-fastapi.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=weiboops
+Group=weiboops
+WorkingDirectory=/opt/weibo-ops
+Environment=HERMES_HOME=/home/weiboops/.hermes
+ExecStart=/home/weiboops/.local/bin/hermes gateway run
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
