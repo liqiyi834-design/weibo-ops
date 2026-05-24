@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from mcp_server.tools import (
+    build_generation_context_tool,
     classify_topic_tool,
     generate_comment_tool,
     get_ent_topics_tool,
@@ -175,6 +176,28 @@ def rerank_topics_with_research(
         candidates=candidates,
         max_results=max_results,
         account_id=account_id,
+    )
+
+
+@mcp.tool
+def build_generation_context(
+    topic: str,
+    research_sources: list[dict] | None = None,
+    rag_results: list[dict] | None = None,
+    reranked_topic: dict | None = None,
+    classification: dict | None = None,
+    max_sources: int = 5,
+    max_rag_items: int = 5,
+) -> dict:
+    """Build stable generation context from Exa sources, RAG results, rerank output, and risk signals."""
+    return build_generation_context_tool(
+        topic=topic,
+        research_sources=research_sources,
+        rag_results=rag_results,
+        reranked_topic=reranked_topic,
+        classification=classification,
+        max_sources=max_sources,
+        max_rag_items=max_rag_items,
     )
 
 

@@ -354,6 +354,24 @@ class TopicRerankResponse(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class GenerationContextRequest(BaseModel):
+    topic: str = Field(min_length=1)
+    research_sources: list[ResearchSource] = Field(default_factory=list)
+    rag_results: list[RetrievedKnowledge] = Field(default_factory=list)
+    reranked_topic: RerankedTopic | None = None
+    classification: TopicClassification | None = None
+    max_sources: int = Field(default=5, ge=1, le=10)
+    max_rag_items: int = Field(default=5, ge=1, le=10)
+
+
+class GenerationContextResponse(BaseModel):
+    topic: str
+    context_text: str
+    source_urls: list[str] = Field(default_factory=list)
+    needs_verification: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class StyleInfo(BaseModel):
     id: str
     name: str

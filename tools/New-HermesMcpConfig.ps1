@@ -51,6 +51,7 @@ mcp_servers:
         - research_topic_sources
         - rerank_topics_with_research
         - retrieve_knowledge
+        - build_generation_context
         - generate_comment
         - save_draft
         - list_drafts

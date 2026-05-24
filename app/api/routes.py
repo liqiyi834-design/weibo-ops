@@ -7,6 +7,7 @@ from app.schemas.comment import RetrievedKnowledge
 from app.schemas.comment import CandidatePool, CandidatePoolCreateRequest, CandidatePoolSummary
 from app.schemas.comment import CandidateStatusUpdateRequest
 from app.schemas.comment import DraftCreateRequest, DraftRecord, DraftSummary, DraftUpdateRequest
+from app.schemas.comment import GenerationContextRequest, GenerationContextResponse
 from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
 from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerResponse, ZhihuDraftCreateRequest
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
@@ -18,6 +19,7 @@ from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetS
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
+from app.services.generation_context_service import GenerationContextService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
@@ -331,3 +333,8 @@ def rerank_topics_with_research(request: TopicRerankRequest) -> TopicRerankRespo
         max_results=request.max_results,
         account_id=request.account_id,
     )
+
+
+@router.post("/api/comment/context", response_model=GenerationContextResponse)
+def build_generation_context(request: GenerationContextRequest) -> GenerationContextResponse:
+    return GenerationContextService().build(request)

@@ -6,12 +6,14 @@ from app.schemas.comment import (
     CommentOutput,
     DraftUpdateRequest,
     FactSummary,
+    GenerationContextRequest,
     GenerateCommentRequest,
     HotTopic,
     TopicRerankCandidate,
 )
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
+from app.services.generation_context_service import GenerationContextService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
@@ -155,6 +157,27 @@ def rerank_topics_with_research_tool(
         account_id=account_id,
     )
     return response.model_dump()
+
+
+def build_generation_context_tool(
+    topic: str,
+    research_sources: list[dict] | None = None,
+    rag_results: list[dict] | None = None,
+    reranked_topic: dict | None = None,
+    classification: dict | None = None,
+    max_sources: int = 5,
+    max_rag_items: int = 5,
+) -> dict:
+    request = GenerationContextRequest(
+        topic=topic,
+        research_sources=research_sources or [],
+        rag_results=rag_results or [],
+        reranked_topic=reranked_topic,
+        classification=classification,
+        max_sources=max_sources,
+        max_rag_items=max_rag_items,
+    )
+    return GenerationContextService().build(request).model_dump()
 
 
 def classify_topic_tool(topic: str, context_text: str = "") -> dict:

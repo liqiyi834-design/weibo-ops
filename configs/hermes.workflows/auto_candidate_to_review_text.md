@@ -14,6 +14,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - `research_topic_sources`
 - `rerank_topics_with_research`
 - `retrieve_knowledge`
+- `build_generation_context`
 - `generate_comment`
 - `safety_check`
 
@@ -27,9 +28,10 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 4. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`，选出最多 3 个最值得生成的主题。
 5. 对每个入选话题调用 `classify_topic`，记录风险、推荐风格和避雷点。
 6. 对每个入选话题调用 `retrieve_knowledge`，检索本地 RAG 中的风格、写法、安全边界和已沉淀资料。
-7. 调用 `generate_comment` 生成文本。`context_text` 必须包含 Exa 临时背景摘要和 RAG 检索摘要；不要把 Exa 结果自动入库。
-8. 对每个生成文本调用 `safety_check`。
-9. 只把通过审核或可人工修改的文本输出给用户过目；如有 blocked 项，放入“暂不采用”区，不输出为可用文本。
+7. 调用 `build_generation_context`，把 Exa 临时背景、RAG 检索结果、重排结果和分类结果整理成标准 `context_text`。
+8. 调用 `generate_comment` 生成文本，`context_text` 必须使用 `build_generation_context` 返回的 `context_text`；不要把 Exa 结果自动入库。
+9. 对每个生成文本调用 `safety_check`。
+10. 只把通过审核或可人工修改的文本输出给用户过目；如有 blocked 项，放入“暂不采用”区，不输出为可用文本。
 
 ## 默认参数建议
 
