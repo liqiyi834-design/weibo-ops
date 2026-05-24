@@ -59,7 +59,7 @@ docs/agent_handbook/platform_video.md
 - Streamlit 工作台第一版。
 - 草稿箱第一版。
 - 本地 RAG 与人工背景资料入库。
-- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_research_sources`。
+- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_current_research`。
 - 已确认 Hermes agents 支持 MCP，可作为后续自动化编排器接入现有 MCP 工具。
 - 轻量多账号配置与表达风格配置。
 - 知乎回答草稿 MVP 与知乎垂直领域适配。

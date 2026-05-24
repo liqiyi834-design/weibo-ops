@@ -8,7 +8,6 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 
 - `research_topic_sources`
 - `ingest_current_research`
-- `ingest_research_sources`
 - `ingest_knowledge`
 - `retrieve_knowledge`
 

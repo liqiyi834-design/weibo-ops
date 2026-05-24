@@ -10,7 +10,6 @@ from mcp_server.tools import (
     get_hot_topics_tool,
     ingest_current_research_tool,
     ingest_knowledge_tool,
-    ingest_research_sources_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
     rerank_topics_with_research_tool,
@@ -173,28 +172,6 @@ def ingest_knowledge(
         source_title=source_title,
         credibility=credibility,
         needs_review=needs_review,
-        candidate_pool_id=candidate_pool_id,
-        candidate_item_id=candidate_item_id,
-        operator_note=operator_note,
-        rebuild_index=rebuild_index,
-    )
-
-
-@mcp.tool
-def ingest_research_sources(
-    topic: str,
-    sources: list[dict],
-    selected_indices: list[int],
-    candidate_pool_id: str | None = None,
-    candidate_item_id: str | None = None,
-    operator_note: str | None = None,
-    rebuild_index: bool = True,
-) -> dict:
-    """Ingest user-selected 1-based Exa research source indices into RAG."""
-    return ingest_research_sources_tool(
-        topic=topic,
-        sources=sources,
-        selected_indices=selected_indices,
         candidate_pool_id=candidate_pool_id,
         candidate_item_id=candidate_item_id,
         operator_note=operator_note,

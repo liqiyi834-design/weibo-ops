@@ -136,7 +136,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `search_knowledge`
 - `retrieve_knowledge`
 - `ingest_knowledge`
-- `ingest_research_sources`
+- `ingest_current_research`
 - `classify_topic`
 - `safety_check`
 - `research_topic_sources`

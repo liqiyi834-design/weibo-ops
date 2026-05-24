@@ -100,7 +100,7 @@ configs/hermes.mcp.example.yaml
 - `rerank_topics_with_research`
 - `retrieve_knowledge`
 - `ingest_knowledge`
-- `ingest_research_sources`
+- `ingest_current_research`
 - `build_generation_context`
 - `generate_comment`
 - `save_draft`
@@ -223,7 +223,7 @@ retrieve_knowledge
 research_topic_sources
 -> 按 1-based 编号列出来源
 -> 等待用户确认编号，或在用户明确授权自动入库时自动选择可信来源
--> ingest_research_sources
+-> ingest_current_research
 -> retrieve_knowledge 验证
 ```
 
@@ -269,7 +269,7 @@ Hermes 不应默认把 Exa 结果写入 RAG。RAG 入库应作为独立动作：
 当前已提供两个受控入库工具：
 
 - `ingest_knowledge`：把用户提供或整理好的单条资料写入 RAG。
-- `ingest_research_sources`：把 `research_topic_sources` 返回的 sources 中用户确认或自动筛选出的编号批量写入 RAG。
+- `ingest_current_research`：Telegram 友好的短参数入库工具，只传 `topic`、编号或 `auto_select`，由工具内部重新检索并写入 RAG。
 
 当前项目内 RAG 的优先作用：
 
