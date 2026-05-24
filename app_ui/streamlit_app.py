@@ -15,8 +15,10 @@ if str(ROOT_DIR) not in sys.path:
 from app.core.config import get_settings
 from app.schemas.comment import HotTopic
 from app.schemas.comment import KnowledgeIngestRequest
+from app.schemas.comment import TopicResearchSourcesRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
+from app.services.exa_research_service import ExaResearchService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
@@ -88,6 +90,9 @@ class ApiClient:
 
     def ingest_knowledge(self, payload: dict) -> dict:
         return self.request("POST", "/api/knowledge/ingest", json=payload)
+
+    def research_topic_sources(self, payload: dict) -> dict:
+        return self.request("POST", "/api/research/exa", json=payload)
 
     def list_knowledge_records(
         self,
@@ -239,6 +244,16 @@ class LocalServiceClient:
 
     def ingest_knowledge(self, payload: dict) -> dict:
         result = KnowledgeIngestionService(self.settings).ingest(KnowledgeIngestRequest(**payload))
+        return result.model_dump(mode="json")
+
+    def research_topic_sources(self, payload: dict) -> dict:
+        request = TopicResearchSourcesRequest(**payload)
+        result = ExaResearchService(self.settings).research_topic_sources(
+            topic=request.topic,
+            limit=request.limit,
+            include_domains=request.include_domains,
+            exclude_domains=request.exclude_domains,
+        )
         return result.model_dump(mode="json")
 
     def list_knowledge_records(
@@ -640,6 +655,128 @@ def render_status_editor(api: ApiClient, pool: dict) -> None:
         run_action(action)
 
 
+def research_source_content(source: dict) -> str:
+    title = source.get("title") or source.get("domain") or source.get("url") or "未命名来源"
+    highlights = [str(value).strip() for value in source.get("highlights") or [] if str(value).strip()]
+    lines = [
+        f"来源：{title}",
+        f"URL：{source.get('url') or ''}",
+        f"域名：{source.get('domain') or ''}",
+        f"可信度：{source.get('credibility') or 'unknown'}",
+        f"发布时间：{source.get('published_date') or ''}",
+        "",
+        "摘要：",
+        source.get("summary") or "",
+    ]
+    if highlights:
+        lines.extend(["", "高亮："])
+        lines.extend(f"- {highlight}" for highlight in highlights)
+    return "\n".join(lines).strip()
+
+
+def research_source_to_knowledge_payload(
+    source: dict,
+    pool: dict,
+    item: dict,
+    rebuild_index: bool,
+) -> dict:
+    return {
+        "topic": item["keyword"],
+        "content": research_source_content(source),
+        "source_url": source.get("url") or None,
+        "source_title": source.get("title") or source.get("domain") or None,
+        "credibility": source.get("credibility") or "unknown",
+        "needs_review": True,
+        "candidate_pool_id": pool["id"],
+        "candidate_item_id": item["id"],
+        "operator_note": "工作台 Exa 本轮检索资料，人工勾选后入库。",
+        "rebuild_index": rebuild_index,
+    }
+
+
+def render_research_source_ingestion(api: ApiClient, pool: dict, item: dict) -> None:
+    cache_key = f"research_sources_{pool['id']}_{item['id']}"
+    st.markdown("#### 本轮资料检索")
+    st.caption("先检索候选资料，人工勾选可信来源后再批量入库 RAG。")
+    col_limit, col_fetch = st.columns([1, 2])
+    with col_limit:
+        limit = st.slider(
+            "检索数量",
+            min_value=1,
+            max_value=10,
+            value=5,
+            key=f"research_limit_{pool['id']}_{item['id']}",
+        )
+    with col_fetch:
+        if st.button("检索本轮资料", key=f"fetch_research_{pool['id']}_{item['id']}", use_container_width=True):
+            def action() -> None:
+                with st.spinner("正在检索本轮背景资料..."):
+                    st.session_state[cache_key] = api.research_topic_sources(
+                        {"topic": item["keyword"], "limit": limit}
+                    )
+
+            run_action(action)
+
+    data = st.session_state.get(cache_key)
+    if not data:
+        return
+
+    if not data.get("is_configured", True):
+        st.warning("Exa 还没有配置，无法检索本轮资料。")
+    for note in data.get("notes") or []:
+        st.caption(note)
+
+    sources = data.get("sources") or []
+    if not sources:
+        st.info("暂时没有可入库的检索结果。")
+        return
+
+    selected_indices: list[int] = []
+    for index, source in enumerate(sources):
+        title = source.get("title") or source.get("domain") or source.get("url") or f"来源 {index + 1}"
+        default_selected = source.get("credibility") in {"medium", "high"}
+        with st.expander(f"{index + 1}. {title}", expanded=index == 0):
+            checked = st.checkbox(
+                "入库这条资料",
+                value=default_selected,
+                key=f"select_research_source_{pool['id']}_{item['id']}_{index}",
+            )
+            st.caption(f"{source.get('domain') or ''} · {source.get('credibility') or 'unknown'}")
+            if source.get("url"):
+                st.markdown(f"[打开来源]({source['url']})")
+            st.write(source.get("summary") or "无摘要")
+            highlights = source.get("highlights") or []
+            if highlights:
+                st.markdown("高亮")
+                for highlight in highlights[:3]:
+                    st.markdown(f"- {highlight}")
+            if checked:
+                selected_indices.append(index)
+
+    if st.button(
+        "把选中资料入库 RAG",
+        key=f"ingest_research_sources_{pool['id']}_{item['id']}",
+        use_container_width=True,
+        disabled=not selected_indices,
+    ):
+        def action() -> None:
+            ingested_paths: list[str] = []
+            with st.spinner("正在把选中资料写入 RAG..."):
+                for order, source_index in enumerate(selected_indices):
+                    payload = research_source_to_knowledge_payload(
+                        sources[source_index],
+                        pool,
+                        item,
+                        rebuild_index=order == len(selected_indices) - 1,
+                    )
+                    result = api.ingest_knowledge(payload)
+                    ingested_paths.append(result["path"])
+            st.session_state.pop(f"knowledge_records_{pool['id']}_{item['id']}", None)
+            st.success(f"已入库 {len(ingested_paths)} 条资料。")
+
+        run_action(action)
+
+
 def render_knowledge_ingestion(api: ApiClient, pool: dict) -> None:
     st.markdown("### 背景资料入库")
     selected_items = [item for item in pool["items"] if item["status"] in {"selected", "researched"}]
@@ -655,6 +792,7 @@ def render_knowledge_ingestion(api: ApiClient, pool: dict) -> None:
     item = item_options[item_label]
 
     render_knowledge_records(api, pool["id"], item["id"])
+    render_research_source_ingestion(api, pool, item)
 
     with st.form(f"knowledge_ingest_{pool['id']}_{item['id']}"):
         source_url = st.text_input("来源 URL", value=item.get("url") or "")
@@ -1186,6 +1324,7 @@ def apply_streamlit_secrets_to_env() -> None:
         "KNOWLEDGE_DIR",
         "RAG_INDEX_PATH",
         "WEIBO_COOKIE",
+        "EXA_API_KEY",
         "API_BASE_URL",
     ]
     for key in keys:
