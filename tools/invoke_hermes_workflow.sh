@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$WORKFLOW" in
-  daily_hot_topics_review|draft_generation_queue|safety_review_digest|auto_candidate_to_review_text)
+  daily_hot_topics_review|draft_generation_queue|safety_review_digest|auto_candidate_to_review_text|ingest_current_research_to_rag)
     ;;
   "")
     echo "--workflow is required" >&2

@@ -96,7 +96,12 @@ configs/hermes.mcp.example.yaml
 - `get_hot_topics`
 - `select_comment_topics`
 - `classify_topic`
+- `research_topic_sources`
+- `rerank_topics_with_research`
 - `retrieve_knowledge`
+- `ingest_knowledge`
+- `ingest_research_sources`
+- `build_generation_context`
 - `generate_comment`
 - `save_draft`
 - `list_drafts`
@@ -208,6 +213,27 @@ retrieve_knowledge
 - 只生成搜索方向、事实核验点和入库建议。
 - 入库前必须保留来源 URL、可信度和是否需要人工确认。
 
+### ingest_current_research_to_rag
+
+目标：把本轮 Exa 公开资料入库 RAG。
+
+流程：
+
+```text
+research_topic_sources
+-> 按 1-based 编号列出来源
+-> 等待用户确认编号，或在用户明确授权自动入库时自动选择可信来源
+-> ingest_research_sources
+-> retrieve_knowledge 验证
+```
+
+输出要求：
+
+- 默认先列资料清单并等待确认。
+- 如果用户明确说“自动入库”“直接入库”“按建议入库”，Hermes 可以自动选择有 URL、有摘要、可信度较高的来源入库。
+- `selected_indices` 使用展示给用户的 1-based 编号。
+- 汇报入库条数、文件路径和一次检索验证摘要。
+
 ## 验证清单
 
 接入 Hermes 后，先验证：
@@ -238,7 +264,12 @@ get_hot_topics
 -> 输出待过目文本和参考资料
 ```
 
-Hermes 不应默认把 Exa 结果写入 RAG。RAG 入库应作为独立动作，只在用户确认资料有长期复用价值时触发。
+Hermes 不应默认把 Exa 结果写入 RAG。RAG 入库应作为独立动作：默认等待用户确认；如果用户明确授权自动入库，可以由 Hermes 自动选择可信来源并调用入库工具。
+
+当前已提供两个受控入库工具：
+
+- `ingest_knowledge`：把用户提供或整理好的单条资料写入 RAG。
+- `ingest_research_sources`：把 `research_topic_sources` 返回的 sources 中用户确认或自动筛选出的编号批量写入 RAG。
 
 当前项目内 RAG 的优先作用：
 

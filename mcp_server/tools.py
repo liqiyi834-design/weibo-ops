@@ -9,12 +9,14 @@ from app.schemas.comment import (
     GenerationContextRequest,
     GenerateCommentRequest,
     HotTopic,
+    KnowledgeIngestRequest,
     TopicRerankCandidate,
 )
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_context_service import GenerationContextService
 from app.services.generation_pipeline import GenerationPipeline
+from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
 from app.services.safety_checker import SafetyChecker
@@ -122,6 +124,74 @@ def search_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None 
 
 def retrieve_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None = None) -> list[dict]:
     return search_knowledge_tool(query=query, top_k=top_k, settings=settings)
+
+
+def ingest_knowledge_tool(
+    topic: str,
+    content: str,
+    source_url: str | None = None,
+    source_title: str | None = None,
+    credibility: str = "unknown",
+    needs_review: bool = True,
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    request = KnowledgeIngestRequest(
+        topic=topic,
+        content=content,
+        source_url=source_url,
+        source_title=source_title,
+        credibility=credibility,
+        needs_review=needs_review,
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+        operator_note=operator_note,
+        rebuild_index=rebuild_index,
+    )
+    response = KnowledgeIngestionService(active_settings).ingest(request)
+    return response.model_dump()
+
+
+def ingest_research_sources_tool(
+    topic: str,
+    sources: list[dict],
+    selected_indices: list[int],
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    selected_sources = _select_research_sources(sources, selected_indices)
+    ingested = []
+    for index, source in enumerate(selected_sources):
+        should_rebuild = rebuild_index and index == len(selected_sources) - 1
+        request = KnowledgeIngestRequest(
+            topic=topic,
+            content=_research_source_content(source),
+            source_url=source.get("url") or None,
+            source_title=source.get("title") or source.get("domain") or None,
+            credibility=source.get("credibility") or "unknown",
+            needs_review=True,
+            candidate_pool_id=candidate_pool_id,
+            candidate_item_id=candidate_item_id,
+            operator_note=operator_note or "Hermes Exa 本轮检索资料，用户确认后入库。",
+            rebuild_index=should_rebuild,
+        )
+        response = KnowledgeIngestionService(active_settings).ingest(request)
+        ingested.append(response.model_dump())
+    return {
+        "topic": topic,
+        "requested_indices": selected_indices,
+        "ingested_count": len(ingested),
+        "ingested": ingested,
+        "rebuild_index": rebuild_index,
+    }
 
 
 def research_topic_sources_tool(
@@ -280,3 +350,34 @@ def _classification_risk_level(max_emotion_level: int, category: str) -> str:
     if max_emotion_level <= 6:
         return "medium"
     return "low"
+
+
+def _select_research_sources(sources: list[dict], selected_indices: list[int]) -> list[dict]:
+    if not selected_indices:
+        raise ValueError("selected_indices must contain at least one 1-based source index.")
+    selected = []
+    for source_index in selected_indices:
+        zero_based = source_index - 1
+        if zero_based < 0 or zero_based >= len(sources):
+            raise ValueError(f"selected index out of range: {source_index}")
+        selected.append(sources[zero_based])
+    return selected
+
+
+def _research_source_content(source: dict) -> str:
+    title = source.get("title") or source.get("domain") or source.get("url") or "未命名来源"
+    highlights = [str(value).strip() for value in source.get("highlights") or [] if str(value).strip()]
+    lines = [
+        f"来源：{title}",
+        f"URL：{source.get('url') or ''}",
+        f"域名：{source.get('domain') or ''}",
+        f"可信度：{source.get('credibility') or 'unknown'}",
+        f"发布时间：{source.get('published_date') or ''}",
+        "",
+        "摘要：",
+        source.get("summary") or "",
+    ]
+    if highlights:
+        lines.extend(["", "高亮："])
+        lines.extend(f"- {highlight}" for highlight in highlights)
+    return "\n".join(lines).strip()

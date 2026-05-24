@@ -8,6 +8,8 @@ from mcp_server.tools import (
     generate_comment_tool,
     get_ent_topics_tool,
     get_hot_topics_tool,
+    ingest_knowledge_tool,
+    ingest_research_sources_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
     rerank_topics_with_research_tool,
@@ -147,6 +149,56 @@ def search_knowledge(query: str, top_k: int = 5) -> list[dict]:
 def retrieve_knowledge(query: str, top_k: int = 5) -> list[dict]:
     """Retrieve relevant local RAG knowledge. Alias aligned with the project blueprint."""
     return retrieve_knowledge_tool(query=query, top_k=top_k)
+
+
+@mcp.tool
+def ingest_knowledge(
+    topic: str,
+    content: str,
+    source_url: str | None = None,
+    source_title: str | None = None,
+    credibility: str = "unknown",
+    needs_review: bool = True,
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+) -> dict:
+    """Save a user-approved background note into the local RAG inbox and optionally rebuild the index."""
+    return ingest_knowledge_tool(
+        topic=topic,
+        content=content,
+        source_url=source_url,
+        source_title=source_title,
+        credibility=credibility,
+        needs_review=needs_review,
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+        operator_note=operator_note,
+        rebuild_index=rebuild_index,
+    )
+
+
+@mcp.tool
+def ingest_research_sources(
+    topic: str,
+    sources: list[dict],
+    selected_indices: list[int],
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+) -> dict:
+    """Ingest user-selected 1-based Exa research source indices into RAG."""
+    return ingest_research_sources_tool(
+        topic=topic,
+        sources=sources,
+        selected_indices=selected_indices,
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+        operator_note=operator_note,
+        rebuild_index=rebuild_index,
+    )
 
 
 @mcp.tool

@@ -59,7 +59,7 @@ docs/agent_handbook/platform_video.md
 - Streamlit 工作台第一版。
 - 草稿箱第一版。
 - 本地 RAG 与人工背景资料入库。
-- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`。
+- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_research_sources`。
 - 已确认 Hermes agents 支持 MCP，可作为后续自动化编排器接入现有 MCP 工具。
 - 轻量多账号配置与表达风格配置。
 - 知乎回答草稿 MVP 与知乎垂直领域适配。
@@ -73,7 +73,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前结果：
 
 ```text
-56 passed
+73 passed
 ```
 
 详情见 [current_status.md](docs/agent_handbook/current_status.md)。
@@ -107,7 +107,7 @@ python -m pytest tests -q -p no:cacheprovider
 
 综合池不是平台池。微博、知乎、视频的候选逻辑应逐步拆开。详情见 [workflow.md](docs/agent_handbook/workflow.md)。
 
-Hermes agents 定位为自动化编排层，只调用 MCP 或 FastAPI 完成候选、检索、审查、草稿和摘要任务，不直接操作平台账号。
+Hermes agents 定位为自动化编排层，只调用 MCP 或 FastAPI 完成候选、检索、审查、资料入库、草稿和摘要任务，不直接操作平台账号。
 
 ## 开发规则
 
