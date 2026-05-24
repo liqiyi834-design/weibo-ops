@@ -13,6 +13,8 @@ from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerR
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse, KnowledgeRecord, KnowledgeRecordSummary
 from app.schemas.comment import PlatformRoutingResponse
+from app.schemas.comment import StyleMemoryExtractRequest, StyleMemoryExtractResponse
+from app.schemas.comment import StyleMemoryIngestRequest, StyleMemoryIngestResponse
 from app.schemas.comment import TopicRerankRequest, TopicRerankResponse
 from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
@@ -25,6 +27,7 @@ from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.knowledge_service import KnowledgeService
 from app.services.platform_router import LLMPlatformRouter
+from app.services.style_memory_service import StyleMemoryService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_rerank_service import TopicRerankService
@@ -311,6 +314,25 @@ def get_knowledge_record(record_id: str) -> KnowledgeRecord:
 def search_knowledge(request: KnowledgeSearchRequest) -> list[RetrievedKnowledge]:
     settings = get_settings()
     return KnowledgeService(settings).search(request.query, request.top_k)
+
+
+@router.post("/api/style-memory/extract", response_model=StyleMemoryExtractResponse)
+def extract_style_memory(request: StyleMemoryExtractRequest) -> StyleMemoryExtractResponse:
+    settings = get_settings()
+    llm = build_llm_client(settings)
+    return StyleMemoryService(settings, llm).extract(request)
+
+
+@router.post("/api/style-memory/ingest", response_model=StyleMemoryIngestResponse)
+def ingest_style_memory(request: StyleMemoryIngestRequest) -> StyleMemoryIngestResponse:
+    settings = get_settings()
+    return StyleMemoryService(settings).ingest(request)
+
+
+@router.get("/api/style-memory/cards")
+def list_style_memory_cards(limit: int = 50) -> dict:
+    settings = get_settings()
+    return {"cards": StyleMemoryService(settings).list_cards(limit=limit)}
 
 
 @router.post("/api/research/exa", response_model=TopicResearchSourcesResponse)

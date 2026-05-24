@@ -5,11 +5,13 @@ from fastmcp import FastMCP
 from mcp_server.tools import (
     build_generation_context_tool,
     classify_topic_tool,
+    extract_style_memory_tool,
     generate_comment_tool,
     get_ent_topics_tool,
     get_hot_topics_tool,
     ingest_current_research_tool,
     ingest_knowledge_tool,
+    ingest_style_memory_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
     rerank_topics_with_research_tool,
@@ -149,6 +151,48 @@ def search_knowledge(query: str, top_k: int = 5) -> list[dict]:
 def retrieve_knowledge(query: str, top_k: int = 5) -> list[dict]:
     """Retrieve relevant local RAG knowledge. Alias aligned with the project blueprint."""
     return retrieve_knowledge_tool(query=query, top_k=top_k)
+
+
+@mcp.tool
+def extract_style_memory(
+    source_text: str,
+    creator_name: str = "",
+    platform: str = "manual",
+    source_url: str | None = None,
+    account_id: str = "today_direct",
+    style_name: str = "general",
+    permission_level: str = "public_reference",
+    operator_note: str | None = None,
+    auto_ingest: bool = False,
+    rebuild_index: bool = True,
+) -> dict:
+    """Extract reusable writing-style observations from user-approved public or owned text."""
+    return extract_style_memory_tool(
+        source_text=source_text,
+        creator_name=creator_name,
+        platform=platform,
+        source_url=source_url,
+        account_id=account_id,
+        style_name=style_name,
+        permission_level=permission_level,
+        operator_note=operator_note,
+        auto_ingest=auto_ingest,
+        rebuild_index=rebuild_index,
+    )
+
+
+@mcp.tool
+def ingest_style_memory(
+    observation: dict,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+) -> dict:
+    """Ingest a reviewed style-memory observation into the style memory RAG."""
+    return ingest_style_memory_tool(
+        observation=observation,
+        operator_note=operator_note,
+        rebuild_index=rebuild_index,
+    )
 
 
 @mcp.tool

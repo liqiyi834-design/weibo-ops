@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("daily_hot_topics_review", "draft_generation_queue", "safety_review_digest", "auto_candidate_to_review_text", "ingest_current_research_to_rag")]
+    [ValidateSet("daily_hot_topics_review", "draft_generation_queue", "safety_review_digest", "auto_candidate_to_review_text", "ingest_current_research_to_rag", "style_memory_ingest")]
     [string]$Workflow,
     [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
     [string]$ExtraPrompt = "",

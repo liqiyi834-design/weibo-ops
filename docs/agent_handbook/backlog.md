@@ -196,6 +196,25 @@ Hermes 可调用的现有 MCP 工具：
 
 ## P7：RAG 升级
 
+### P7-Style：风格记忆库（MVP 已完成）
+
+已实现：
+
+- `StyleMemoryService`
+- `POST /api/style-memory/extract`
+- `POST /api/style-memory/ingest`
+- `GET /api/style-memory/cards`
+- Streamlit “风格记忆库” tab
+- MCP 工具 `extract_style_memory`、`ingest_style_memory`
+- Hermes workflow `style_memory_ingest`
+
+后续可继续：
+
+- 配置相关博主 allowlist。
+- 为自有/授权账号做定时自动提炼。
+- 给风格卡增加 reviewed/archived 状态。
+- 生成时对风格记忆和事实资料做分路检索与 rerank。
+
 可选方向：
 
 - Chroma。

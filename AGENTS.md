@@ -59,6 +59,7 @@ docs/agent_handbook/platform_video.md
 - Streamlit 工作台第一版。
 - 草稿箱第一版。
 - 本地 RAG 与人工背景资料入库。
+- 风格记忆库 MVP：工作台/API/MCP 支持把公开或授权文本提炼成写法规则并入库 RAG。
 - MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_current_research`。
 - 已确认 Hermes agents 支持 MCP，可作为后续自动化编排器接入现有 MCP 工具。
 - 轻量多账号配置与表达风格配置。
@@ -73,7 +74,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前结果：
 
 ```text
-73 passed
+78 passed
 ```
 
 详情见 [current_status.md](docs/agent_handbook/current_status.md)。
@@ -177,6 +178,12 @@ bash tools/start_hermes_mcp.sh --python /opt/weibo-ops/.venv/bin/python
 
 ```powershell
 .\tools\Invoke-HermesWorkflow.ps1 -Workflow auto_candidate_to_review_text
+```
+
+运行 Hermes 风格记忆入库：
+
+```powershell
+.\tools\Invoke-HermesWorkflow.ps1 -Workflow style_memory_ingest
 ```
 
 运行测试：

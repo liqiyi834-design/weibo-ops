@@ -101,6 +101,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - 候选题多选与批量状态更新。
 - 人工背景资料入库与 RAG 重建。
 - Exa 本轮检索结果可在工作台人工勾选后批量入库 RAG。
+- 风格记忆库 tab：可粘贴公开或授权文本，提炼风格观察卡，人工确认后入库 RAG。
 - 查看入库背景资料。
 - 从候选题生成微博草稿或知乎回答草稿。
 - 草稿箱查看、编辑、审核状态更新。
@@ -119,6 +120,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - 无向量索引时 fallback 到 `KeywordRetriever`。
 - 人工背景资料入库到 `app/knowledge/inbox/`。
 - 工作台支持把 Exa 检索到的本轮公开资料转成资料卡，人工选择后入库。
+- 风格记忆库写入 `app/knowledge/style_memory/`，用于长期表达风格召回。
 - RAG 递归索引 `app/knowledge/**/*.md`。
 
 ### MCP
@@ -135,6 +137,8 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `rebuild_knowledge`
 - `search_knowledge`
 - `retrieve_knowledge`
+- `extract_style_memory`
+- `ingest_style_memory`
 - `ingest_knowledge`
 - `ingest_current_research`
 - `classify_topic`
@@ -204,5 +208,5 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-73 passed
+78 passed
 ```

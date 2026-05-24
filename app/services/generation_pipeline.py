@@ -40,7 +40,8 @@ class GenerationPipeline:
             classification=classification,
         )
         classification.risk_notes.extend(style_notes)
-        retrieved = self._retrieve(request.topic + " " + request.context_text) if request.use_rag else []
+        retrieve_query = f"{request.topic} {request.context_text} {request.account_id} {style} 风格记忆库 写法 节奏"
+        retrieved = self._retrieve(retrieve_query) if request.use_rag else []
         opinion = self.opinion_generator.generate(fact_summary, retrieved, classification)
         output = self.persona_rewriter.rewrite(
             fact_summary=fact_summary,

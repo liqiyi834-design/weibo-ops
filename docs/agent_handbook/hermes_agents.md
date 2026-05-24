@@ -99,6 +99,8 @@ configs/hermes.mcp.example.yaml
 - `research_topic_sources`
 - `rerank_topics_with_research`
 - `retrieve_knowledge`
+- `extract_style_memory`
+- `ingest_style_memory`
 - `ingest_knowledge`
 - `ingest_current_research`
 - `build_generation_context`
@@ -233,6 +235,25 @@ research_topic_sources
 - 如果用户明确说“自动入库”“直接入库”“按建议入库”，Hermes 可以自动选择有 URL、有摘要、可信度较高的来源入库。
 - `selected_indices` 使用展示给用户的 1-based 编号。
 - 汇报入库条数、文件路径和一次检索验证摘要。
+
+### style_memory_ingest
+
+目标：把公开或授权文本提炼为风格记忆卡，并按用户确认或授权写入 RAG。
+
+流程：
+
+```text
+extract_style_memory
+-> 用户确认或 auto_ingest
+-> ingest_style_memory
+-> retrieve_knowledge 验证
+```
+
+输出要求：
+
+- 提炼 hook、句式节奏、论证结构、修辞、适用话题和禁用点。
+- 不保存大段原文，不要求模型模仿某个博主本人。
+- 外部公开博主默认 `permission_level=public_reference` 且 `needs_review=true`。
 
 ## 验证清单
 

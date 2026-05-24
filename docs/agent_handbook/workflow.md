@@ -134,6 +134,31 @@ AI 可以做：
 
 自动网页抓取暂未实现。后续实现时仍需要人工审查入口，避免低质搬运内容污染知识库。
 
+## 风格记忆库流程
+
+风格记忆库用于沉淀写法规则，不保存大段原文，不复刻单个博主。
+
+真人工作台入口：
+
+```text
+粘贴公开或授权文本
+-> 提炼风格观察卡
+-> 人工查看 hook、节奏、结构、修辞、禁用点
+-> 确认入库 app/knowledge/style_memory/
+-> rebuild RAG
+```
+
+Hermes 入口：
+
+```text
+extract_style_memory
+-> 用户确认或 auto_ingest
+-> ingest_style_memory
+-> retrieve_knowledge 验证
+```
+
+外部公开博主默认只作为 `public_reference`，入库卡片必须 `needs_review=true`。自有或授权账号可以自动沉淀，但仍只保存风格摘要、短例句和禁用点。
+
 ## 多平台方向
 
 平台之间不应长期共用同一个候选池。

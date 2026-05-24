@@ -24,6 +24,8 @@ mcp_servers:
         - research_topic_sources
         - rerank_topics_with_research
         - retrieve_knowledge
+        - extract_style_memory
+        - ingest_style_memory
         - ingest_knowledge
         - ingest_current_research
         - build_generation_context

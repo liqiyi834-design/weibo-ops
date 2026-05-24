@@ -10,6 +10,8 @@ from app.schemas.comment import (
     GenerateCommentRequest,
     HotTopic,
     KnowledgeIngestRequest,
+    StyleMemoryExtractRequest,
+    StyleMemoryIngestRequest,
     TopicRerankCandidate,
 )
 from app.services.draft_service import DraftService
@@ -20,6 +22,7 @@ from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
 from app.services.safety_checker import SafetyChecker
+from app.services.style_memory_service import StyleMemoryService
 from app.services.topic_classifier import TopicClassifier
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_rerank_service import TopicRerankService
@@ -124,6 +127,52 @@ def search_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None 
 
 def retrieve_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None = None) -> list[dict]:
     return search_knowledge_tool(query=query, top_k=top_k, settings=settings)
+
+
+def extract_style_memory_tool(
+    source_text: str,
+    creator_name: str = "",
+    platform: str = "manual",
+    source_url: str | None = None,
+    account_id: str = "today_direct",
+    style_name: str = "general",
+    permission_level: str = "public_reference",
+    operator_note: str | None = None,
+    auto_ingest: bool = False,
+    rebuild_index: bool = True,
+    settings: Settings | None = None,
+    llm: BaseLLMClient | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    active_llm = llm or build_llm_client(active_settings)
+    request = StyleMemoryExtractRequest(
+        creator_name=creator_name,
+        platform=platform,
+        source_text=source_text,
+        source_url=source_url,
+        account_id=account_id,
+        style_name=style_name,
+        permission_level=permission_level,
+        operator_note=operator_note,
+        auto_ingest=auto_ingest,
+        rebuild_index=rebuild_index,
+    )
+    return StyleMemoryService(active_settings, active_llm).extract(request).model_dump()
+
+
+def ingest_style_memory_tool(
+    observation: dict,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    request = StyleMemoryIngestRequest(
+        observation=observation,
+        operator_note=operator_note,
+        rebuild_index=rebuild_index,
+    )
+    return StyleMemoryService(active_settings).ingest(request).model_dump()
 
 
 def ingest_knowledge_tool(

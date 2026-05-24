@@ -15,6 +15,8 @@ if str(ROOT_DIR) not in sys.path:
 from app.core.config import get_settings
 from app.schemas.comment import HotTopic
 from app.schemas.comment import KnowledgeIngestRequest
+from app.schemas.comment import StyleMemoryExtractRequest
+from app.schemas.comment import StyleMemoryIngestRequest
 from app.schemas.comment import TopicResearchSourcesRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
@@ -23,6 +25,7 @@ from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.platform_router import LLMPlatformRouter
+from app.services.style_memory_service import StyleMemoryService
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_asset_service import TopicAssetService
@@ -109,6 +112,15 @@ class ApiClient:
 
     def get_knowledge_record(self, record_id: str) -> dict:
         return self.request("GET", f"/api/knowledge/inbox/{record_id}")
+
+    def extract_style_memory(self, payload: dict) -> dict:
+        return self.request("POST", "/api/style-memory/extract", json=payload)
+
+    def ingest_style_memory(self, payload: dict) -> dict:
+        return self.request("POST", "/api/style-memory/ingest", json=payload)
+
+    def list_style_memory_cards(self, limit: int = 50) -> list[dict]:
+        return self.request("GET", "/api/style-memory/cards", params={"limit": limit})["cards"]
 
     def create_topic_asset(self, payload: dict) -> dict:
         return self.request("POST", "/api/topic-assets", json=payload)
@@ -273,6 +285,18 @@ class LocalServiceClient:
     def get_knowledge_record(self, record_id: str) -> dict:
         return KnowledgeIngestionService(self.settings).get_record(record_id).model_dump(mode="json")
 
+    def extract_style_memory(self, payload: dict) -> dict:
+        llm = build_llm_client(self.settings)
+        request = StyleMemoryExtractRequest(**payload)
+        return StyleMemoryService(self.settings, llm).extract(request).model_dump(mode="json")
+
+    def ingest_style_memory(self, payload: dict) -> dict:
+        request = StyleMemoryIngestRequest(**payload)
+        return StyleMemoryService(self.settings).ingest(request).model_dump(mode="json")
+
+    def list_style_memory_cards(self, limit: int = 50) -> list[dict]:
+        return StyleMemoryService(self.settings).list_cards(limit=limit)
+
     def create_topic_asset(self, payload: dict) -> dict:
         from app.schemas.comment import TopicAssetCreateRequest
 
@@ -321,8 +345,8 @@ def main() -> None:
         if st.button("检查连接", use_container_width=True):
             run_action(lambda: st.success(api.health()))
 
-    tab_create, tab_assets, tab_pools, tab_drafts, tab_config = st.tabs(
-        ["生成候选池", "综合池", "候选池审核", "草稿箱", "账号与风格"]
+    tab_create, tab_assets, tab_pools, tab_drafts, tab_style_memory, tab_config = st.tabs(
+        ["生成候选池", "综合池", "候选池审核", "草稿箱", "风格记忆库", "账号与风格"]
     )
 
     with tab_create:
@@ -336,6 +360,9 @@ def main() -> None:
 
     with tab_drafts:
         render_drafts(api)
+
+    with tab_style_memory:
+        render_style_memory(api)
 
     with tab_config:
         render_config(api)
@@ -1258,6 +1285,97 @@ def split_text_items(text: str) -> list[str]:
 
 def split_lines(text: str) -> list[str]:
     return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def render_style_memory(api: ApiClient) -> None:
+    st.subheader("风格记忆库")
+    st.caption("把公开或授权文本提炼成写法规则、节奏、禁用点和适用话题；生成时作为 RAG 风格记忆召回。")
+
+    with st.form("style_memory_extract"):
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            creator_name = st.text_input("来源/博主名", value="")
+        with col_b:
+            platform = st.text_input("平台", value="weibo")
+        with col_c:
+            permission_level = st.selectbox("权限", ["public_reference", "authorized", "own"], index=0)
+        col_d, col_e = st.columns(2)
+        with col_d:
+            account_id = st.text_input("目标账号", value="today_direct")
+        with col_e:
+            style_name = st.text_input("风格名", value="general")
+        source_url = st.text_input("来源 URL", value="")
+        source_text = st.text_area("粘贴公开内容/授权内容", height=180)
+        operator_note = st.text_input("备注", value="")
+        col_f, col_g = st.columns(2)
+        with col_f:
+            auto_ingest = st.checkbox("提炼后直接入库", value=False)
+        with col_g:
+            rebuild_index = st.checkbox("入库后重建 RAG", value=True)
+        submitted = st.form_submit_button("提炼风格观察卡", use_container_width=True)
+
+    if submitted:
+        if not source_text.strip():
+            st.warning("请先粘贴要提炼的内容。")
+        else:
+            payload = {
+                "creator_name": creator_name,
+                "platform": platform,
+                "source_text": source_text,
+                "source_url": source_url or None,
+                "account_id": account_id,
+                "style_name": style_name,
+                "permission_level": permission_level,
+                "operator_note": operator_note or None,
+                "auto_ingest": auto_ingest,
+                "rebuild_index": rebuild_index,
+            }
+
+            def action() -> None:
+                with st.spinner("正在提炼风格观察卡..."):
+                    result = api.extract_style_memory(payload)
+                st.session_state["latest_style_memory_observation"] = result["observation"]
+                if result.get("ingested"):
+                    st.session_state.pop("style_memory_cards", None)
+                    st.success(f"风格记忆已入库：{result['ingested']['path']}")
+                else:
+                    st.success("风格观察卡已生成，确认后可入库。")
+
+            run_action(action)
+
+    observation = st.session_state.get("latest_style_memory_observation")
+    if observation:
+        st.markdown("### 最新风格观察卡")
+        st.json(observation)
+        if st.button("确认入库风格记忆", use_container_width=True):
+            def action() -> None:
+                result = api.ingest_style_memory(
+                    {
+                        "observation": observation,
+                        "operator_note": "工作台人工确认入库。",
+                        "rebuild_index": True,
+                    }
+                )
+                st.session_state.pop("style_memory_cards", None)
+                st.success(f"风格记忆已入库：{result['path']}")
+
+            run_action(action)
+
+    st.markdown("### 已入库风格卡")
+    if st.button("刷新风格记忆库", use_container_width=True):
+        st.session_state.pop("style_memory_cards", None)
+
+    def load_cards() -> list[dict]:
+        if "style_memory_cards" not in st.session_state:
+            st.session_state["style_memory_cards"] = api.list_style_memory_cards()
+        return st.session_state["style_memory_cards"]
+
+    cards: list[dict] = []
+    run_action(lambda: cards.extend(load_cards()))
+    if cards:
+        st.dataframe(cards, use_container_width=True, hide_index=True)
+    else:
+        st.info("还没有风格记忆卡。")
 
 
 def render_config(api: ApiClient) -> None:

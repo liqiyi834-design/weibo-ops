@@ -163,6 +163,56 @@ class KnowledgeRecord(KnowledgeRecordSummary):
     content: str = ""
 
 
+class StyleMemoryObservation(BaseModel):
+    creator_name: str = ""
+    platform: str = "manual"
+    account_id: str = "today_direct"
+    style_name: str = "general"
+    hook_patterns: list[str] = Field(default_factory=list)
+    sentence_rhythm: str = ""
+    argument_structure: list[str] = Field(default_factory=list)
+    rhetorical_devices: list[str] = Field(default_factory=list)
+    emotion_level: int = Field(default=5, ge=1, le=10)
+    suitable_topics: list[str] = Field(default_factory=list)
+    avoid_points: list[str] = Field(default_factory=list)
+    reusable_rules: list[str] = Field(default_factory=list)
+    example_lines: list[str] = Field(default_factory=list)
+    source_url: str | None = None
+    permission_level: Literal["own", "authorized", "public_reference"] = "public_reference"
+    needs_review: bool = True
+
+
+class StyleMemoryExtractRequest(BaseModel):
+    creator_name: str = ""
+    platform: str = "manual"
+    source_text: str = Field(min_length=1)
+    source_url: str | None = None
+    account_id: str = "today_direct"
+    style_name: str = "general"
+    permission_level: Literal["own", "authorized", "public_reference"] = "public_reference"
+    operator_note: str | None = None
+    auto_ingest: bool = False
+    rebuild_index: bool = True
+
+
+class StyleMemoryIngestRequest(BaseModel):
+    observation: StyleMemoryObservation
+    operator_note: str | None = None
+    rebuild_index: bool = True
+
+
+class StyleMemoryIngestResponse(BaseModel):
+    success: bool = True
+    path: str
+    observation: StyleMemoryObservation
+    rebuild_stats: dict[str, int | bool | str] | None = None
+
+
+class StyleMemoryExtractResponse(BaseModel):
+    observation: StyleMemoryObservation
+    ingested: StyleMemoryIngestResponse | None = None
+
+
 class OpinionDraft(BaseModel):
     core_conflict: str
     critique_angles: list[str] = Field(default_factory=list)

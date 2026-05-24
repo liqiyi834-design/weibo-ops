@@ -108,6 +108,7 @@ topic + context_text
 - 综合池：`output/topic_assets/`
 - 草稿箱：`output/drafts/`
 - 人工背景资料：`app/knowledge/inbox/`
+- 风格记忆库：`app/knowledge/style_memory/`
 - RAG 索引：`.rag_index/`
 
 注意：
@@ -142,6 +143,7 @@ WEIBO_COOKIE=...
 现有 `app/knowledge/` 更偏向：
 
 - 人格型 RAG：账号人设、语气、常用句式、禁用句式。
+- 风格记忆库：从公开或授权文本提炼出的 hook、节奏、论证结构、修辞手法、适用话题和禁用点。
 - 安全规则 RAG：事实核查标准、来源可信度、风险表达替换、红线。
 - 写作公式 RAG：微博锐评结构、评论钩子、保守表达模板。
 

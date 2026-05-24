@@ -115,6 +115,18 @@ class MockLLMClient(BaseLLMClient):
                     }
                 ]
             }
+        if "stylememoryschema" in lowered:
+            return {
+                "hook_patterns": ["先抛判断，再补事实边界"],
+                "sentence_rhythm": "短句为主，转折明显，结尾留一个可讨论的问题。",
+                "argument_structure": ["判断", "事实依据", "规则或人性层面的解释", "克制收束"],
+                "rhetorical_devices": ["反差", "设问", "轻讽刺"],
+                "emotion_level": 6,
+                "suitable_topics": ["公共表达争议", "平台规则", "娱乐舆情"],
+                "avoid_points": ["不照搬原句", "不攻击个人", "不把猜测写成事实"],
+                "reusable_rules": ["观点可以锋利，但事实边界要先立住。"],
+                "example_lines": ["热闹可以追，结论最好慢半拍。"],
+            }
         return {
             "one_liner": "这事别急着站队，先把事实和情绪分开看。",
             "short_comment": "目前公开信息还有限，能写的是规则和表达问题，不能把猜测写成定论。热搜可以快，判断要稳。",
