@@ -220,3 +220,45 @@ retrieve_knowledge
 - `save_draft` 只保存草稿，不发布。
 - 高风险话题经过 `classify_topic` 和 `safety_check` 后会降温或进入人工审核。
 - 配置文件、日志和输出中没有 API key、Cookie、token 或真实账号隐私。
+
+## Exa + RAG 的 Hermes 编排原则
+
+Hermes 后续接入 Exa 时，推荐把 Exa 作为“临时背景检索工具”，把 RAG 作为“长期编辑记忆”。
+
+定时任务或手动工作流中，Hermes 可以：
+
+```text
+get_hot_topics
+-> select_comment_topics 粗筛
+-> research_topic_sources 调 Exa 获取公开资料摘要
+-> 基于 Exa 摘要做 LLM rerank
+-> retrieve_knowledge 获取人格化写法、安全边界和已沉淀资料
+-> generate_comment 使用 Exa 临时背景 + RAG 结果
+-> safety_check
+-> 输出待过目文本和参考资料
+```
+
+Hermes 不应默认把 Exa 结果写入 RAG。RAG 入库应作为独立动作，只在用户确认资料有长期复用价值时触发。
+
+当前项目内 RAG 的优先作用：
+
+- 账号人格和表达风格。
+- 选题判断框架。
+- 安全边界和避雷经验。
+- 已确认的长期背景资料。
+- 复盘沉淀。
+
+Exa 的优先作用：
+
+- 当前事实和外部公开资料。
+- 热点背景摘要。
+- 评分前的轻量资料补全。
+- 生成时的临时上下文。
+
+RAG 技术路线不追求一步到位。Hermes 编排优先配合：
+
+- Hybrid RAG + Rerank：提高召回质量，减少无关风格 chunk 干扰。
+- 轻量 Self-RAG：让 Hermes 在资料不足时输出补资料清单，而不是硬生成。
+- Corrective RAG：对低相关、过时、低可信资料做过滤或降权。
+
+Graph RAG 暂缓，等项目有稳定实体关系库需求后再评估。

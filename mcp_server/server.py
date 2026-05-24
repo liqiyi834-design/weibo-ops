@@ -9,6 +9,7 @@ from mcp_server.tools import (
     get_hot_topics_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
+    research_topic_sources_tool,
     retrieve_knowledge_tool,
     safety_check_tool,
     search_knowledge_tool,
@@ -144,6 +145,22 @@ def search_knowledge(query: str, top_k: int = 5) -> list[dict]:
 def retrieve_knowledge(query: str, top_k: int = 5) -> list[dict]:
     """Retrieve relevant local RAG knowledge. Alias aligned with the project blueprint."""
     return retrieve_knowledge_tool(query=query, top_k=top_k)
+
+
+@mcp.tool
+def research_topic_sources(
+    topic: str,
+    limit: int = 5,
+    include_domains: list[str] | None = None,
+    exclude_domains: list[str] | None = None,
+) -> dict:
+    """Search public background sources for a topic via Exa without ingesting them into RAG."""
+    return research_topic_sources_tool(
+        topic=topic,
+        limit=limit,
+        include_domains=include_domains,
+        exclude_domains=exclude_domains,
+    )
 
 
 @mcp.tool

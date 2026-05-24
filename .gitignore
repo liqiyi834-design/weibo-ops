@@ -34,6 +34,7 @@ __pycache__/
 .env
 configs/hermes.mcp.local.yaml
 ssh.txt
+.codex_tmp/
 *.secret
 *.token
 secrets/

@@ -127,3 +127,32 @@ docs/HotComment-AI技术方案.md
 AGENTS.md
 docs/agent_handbook/*.md
 ```
+
+## 国内云服务器访问 GitHub 慢
+
+现象：
+
+```text
+curl GitHub release 大文件速度很慢，几分钟只能下载一部分，最终 Operation timed out
+curl raw.githubusercontent.com 安装脚本长时间卡住
+```
+
+原因通常不是项目问题，而是云服务器所在网络访问 GitHub、GitHub release asset 或 raw.githubusercontent.com 不稳定。
+
+处理原则：
+
+- 不要默认让中国大陆云服务器直连 GitHub 下载大文件。
+- 优先在网络更好的本机下载 release 包，再用 `scp` 上传服务器。
+- 服务器侧只做解压、安装、权限设置和版本校验。
+- 可断点续传时使用 `curl -C -`，但如果速度长期低于可接受范围，应改走本机下载上传。
+
+推荐路径：
+
+```text
+本机下载
+-> scp 上传 /tmp
+-> install 到 /usr/local/bin 或项目指定目录
+-> 运行 --version 校验
+```
+
+这个经验适用于 mihomo/Clash、Hermes 发行包、浏览器自动化二进制、CLI 工具和其他 GitHub release 资产。

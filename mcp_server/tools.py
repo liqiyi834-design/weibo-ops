@@ -4,6 +4,7 @@ from app.core.config import Settings, get_settings
 from app.llm.client import BaseLLMClient, build_llm_client
 from app.schemas.comment import CommentOutput, DraftUpdateRequest, FactSummary, GenerateCommentRequest, HotTopic
 from app.services.draft_service import DraftService
+from app.services.exa_research_service import ExaResearchService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
@@ -111,6 +112,23 @@ def search_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None 
 
 def retrieve_knowledge_tool(query: str, top_k: int = 5, settings: Settings | None = None) -> list[dict]:
     return search_knowledge_tool(query=query, top_k=top_k, settings=settings)
+
+
+def research_topic_sources_tool(
+    topic: str,
+    limit: int = 5,
+    include_domains: list[str] | None = None,
+    exclude_domains: list[str] | None = None,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    response = ExaResearchService(active_settings).research_topic_sources(
+        topic=topic,
+        limit=limit,
+        include_domains=include_domains,
+        exclude_domains=exclude_domains,
+    )
+    return response.model_dump()
 
 
 def classify_topic_tool(topic: str, context_text: str = "") -> dict:

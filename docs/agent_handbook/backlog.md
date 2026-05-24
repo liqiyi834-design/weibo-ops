@@ -203,3 +203,88 @@ Hermes 可调用的现有 MCP 工具：
 - 更好的中文分词。
 - 文档元数据。
 - `/api/knowledge/rebuild` 支持指定目录。
+
+### P7A：Hybrid RAG + Rerank（优先）
+
+当前 RAG 是 Vanilla Vector RAG + 关键词 fallback。下一步优先升级为真正的 Hybrid RAG：
+
+```text
+query
+-> vector retrieve top_k
+-> keyword/BM25 retrieve top_k
+-> merge + dedupe
+-> rerank
+-> return compact context
+```
+
+第一版 rerank 可以先用简单规则：
+
+- 查询词命中数。
+- chunk 来源优先级。
+- `credibility`。
+- `needs_review`。
+- recency。
+- 向量相似度。
+
+后续再升级为 LLM rerank 或 cross-encoder rerank。
+
+目标：减少无关写作公式被召回，提高人格规则、事实资料、安全边界的匹配精度。
+
+### P7B：轻量 Self-RAG
+
+在生成前增加“资料充足性判断”：
+
+```text
+RAG context + Exa context
+-> LLM 判断 enough / weak / insufficient
+-> insufficient 时不硬生成，输出需要补资料清单
+```
+
+适用场景：
+
+- 事故、刑案、未成年人、公共安全等高风险话题。
+- RAG 只召回写作公式，没有召回具体事实。
+- Exa 结果来源不足或互相矛盾。
+
+### P7C：Corrective RAG
+
+在召回后增加结果过滤：
+
+- 相关性过低的 chunk 丢弃。
+- 过时资料降权。
+- `needs_review=true` 的事实资料生成时必须标注待核验。
+- 低可信来源只作为线索，不作为确定事实。
+
+### P7D：Graph RAG（暂缓）
+
+暂不优先实现 Graph RAG。只有当项目开始长期维护人物、公司、作品、事件、平台规则之间的关系库时，再考虑实体抽取、关系图谱和社区摘要。
+
+## P3A：Exa 参与选题评分与临时背景
+
+在现有硬规则评分基础上，新增 Exa 背景检索和 LLM rerank。
+
+MVP 流程：
+
+```text
+get_hot_topics
+-> select_comment_topics 粗筛 8-10 条
+-> research_topic_sources 调 Exa 检索背景
+-> LLM rerank 输出 3 条候选、理由、角度、风险和待核验点
+-> generate_comment 使用 Exa 临时背景 + RAG 检索结果
+```
+
+第一版先不自动入库 RAG。Exa 摘要只作为当次 `context_text` 和评分依据。
+
+建议新增：
+
+- `EXA_API_KEY`
+- `app/services/exa_research_service.py`
+- `POST /api/research/exa`
+- MCP 工具 `research_topic_sources`
+- 后续可选 MCP 工具 `rerank_topics_with_research`
+
+RAG 入库放在用户确认之后：
+
+- 资料值得长期复用时再写入 `app/knowledge/inbox/`。
+- 入库内容必须保留来源 URL、标题、检索时间和人工备注。
+- 未核实资料不能自动升级为高可信资料。

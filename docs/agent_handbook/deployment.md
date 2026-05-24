@@ -77,6 +77,36 @@ deployment/linux/README.md
 - Nginx 反向代理样例。
 - Linux 版 Hermes MCP 配置生成脚本。
 
+### 国内云服务器下载策略
+
+如果云服务器位于中国大陆或访问 GitHub 很慢，不要让服务器直接从 GitHub release、raw.githubusercontent.com 或其他大文件源下载依赖。
+
+推荐流程：
+
+```text
+本机/海外网络下载 release 包
+-> scp 上传到云服务器 /tmp
+-> 服务器本地解压、安装、校验版本
+```
+
+例如安装 mihomo/Clash 内核时，优先在本机下载 Linux amd64 release 包，再上传到服务器安装：
+
+```powershell
+curl.exe -L -o .codex_tmp\mihomo-linux-amd64-v1.gz <GitHub release asset URL>
+scp -i $HOME\.ssh\weibo_ops_server .codex_tmp\mihomo-linux-amd64-v1.gz root@<server-ip>:/tmp/mihomo.gz
+```
+
+服务器侧只负责解压和安装：
+
+```bash
+gzip -d -f /tmp/mihomo.gz
+install -m 0755 /tmp/mihomo /usr/local/bin/mihomo
+ln -sf /usr/local/bin/mihomo /usr/local/bin/clash
+mihomo -v
+```
+
+这个策略同样适用于 Hermes wheel、浏览器驱动、模型工具二进制和其他 GitHub release 大文件。除非已经确认服务器访问源站稳定，否则不要把服务器直连 GitHub 下载作为默认部署路径。
+
 ## Streamlit Community Cloud
 
 当前短期部署建议：方案 B。

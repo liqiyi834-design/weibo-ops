@@ -21,6 +21,7 @@ mcp_servers:
         - get_hot_topics
         - select_comment_topics
         - classify_topic
+        - research_topic_sources
         - retrieve_knowledge
         - generate_comment
         - save_draft

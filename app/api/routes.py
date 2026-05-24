@@ -12,9 +12,11 @@ from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerR
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse, KnowledgeRecord, KnowledgeRecordSummary
 from app.schemas.comment import PlatformRoutingResponse
+from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
+from app.services.exa_research_service import ExaResearchService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
@@ -305,3 +307,14 @@ def get_knowledge_record(record_id: str) -> KnowledgeRecord:
 def search_knowledge(request: KnowledgeSearchRequest) -> list[RetrievedKnowledge]:
     settings = get_settings()
     return KnowledgeService(settings).search(request.query, request.top_k)
+
+
+@router.post("/api/research/exa", response_model=TopicResearchSourcesResponse)
+def research_topic_sources(request: TopicResearchSourcesRequest) -> TopicResearchSourcesResponse:
+    settings = get_settings()
+    return ExaResearchService(settings).research_topic_sources(
+        topic=request.topic,
+        limit=request.limit,
+        include_domains=request.include_domains,
+        exclude_domains=request.exclude_domains,
+    )

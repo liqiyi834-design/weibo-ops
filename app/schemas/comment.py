@@ -286,6 +286,35 @@ class TopicResearchMetrics(BaseModel):
     error: str | None = None
 
 
+class ResearchSource(BaseModel):
+    title: str = ""
+    url: str
+    domain: str = ""
+    published_date: str | None = None
+    author: str | None = None
+    summary: str = ""
+    highlights: list[str] = Field(default_factory=list)
+    relevance_score: float | None = None
+    credibility: Literal["unknown", "low", "medium", "high"] = "unknown"
+    ingest_recommendation: Literal["candidate_only", "can_ingest_after_review"] = "candidate_only"
+
+
+class TopicResearchSourcesRequest(BaseModel):
+    topic: str = Field(min_length=1)
+    limit: int = Field(default=5, ge=1, le=10)
+    include_domains: list[str] = Field(default_factory=list)
+    exclude_domains: list[str] = Field(default_factory=list)
+
+
+class TopicResearchSourcesResponse(BaseModel):
+    topic: str
+    query: str
+    source: str = "exa"
+    sources: list[ResearchSource] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    is_configured: bool = True
+
+
 class StyleInfo(BaseModel):
     id: str
     name: str
