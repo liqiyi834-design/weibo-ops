@@ -301,6 +301,7 @@ class ResearchSource(BaseModel):
 
 class TopicResearchSourcesRequest(BaseModel):
     topic: str = Field(min_length=1)
+    query: str | None = None
     limit: int = Field(default=5, ge=1, le=10)
     include_domains: list[str] = Field(default_factory=list)
     exclude_domains: list[str] = Field(default_factory=list)

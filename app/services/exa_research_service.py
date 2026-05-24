@@ -21,23 +21,24 @@ class ExaResearchService:
         limit: int = 5,
         include_domains: list[str] | None = None,
         exclude_domains: list[str] | None = None,
+        query: str | None = None,
     ) -> TopicResearchSourcesResponse:
-        query = self._build_query(topic)
+        search_query = query or self._build_query(topic)
         if not self.settings.exa_api_key:
             return TopicResearchSourcesResponse(
                 topic=topic,
-                query=query,
+                query=search_query,
                 sources=[],
                 notes=["EXA_API_KEY is not configured."],
                 is_configured=False,
             )
 
         payload: dict = {
-            "query": query,
+            "query": search_query,
             "numResults": limit,
             "contents": {
                 "highlights": {
-                    "query": topic,
+                    "query": query or topic,
                     "maxCharacters": 700,
                 },
                 "summary": True,
@@ -54,7 +55,7 @@ class ExaResearchService:
         notes = []
         if not sources:
             notes.append("Exa returned no usable sources.")
-        return TopicResearchSourcesResponse(topic=topic, query=query, sources=sources, notes=notes)
+        return TopicResearchSourcesResponse(topic=topic, query=search_query, sources=sources, notes=notes)
 
     def _post(self, payload: dict) -> dict:
         headers = {

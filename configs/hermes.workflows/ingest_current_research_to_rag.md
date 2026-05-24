@@ -24,15 +24,15 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 
 如果用户明确说“自动入库”“直接入库”“按建议入库”或类似授权：
 
-1. 调用 `research_topic_sources`，默认 `limit=5`。
+1. 调用 `research_topic_sources`，默认 `limit=5`。如果话题是短词、重名词、角色名、作品名或容易被误解的词，必须补 `query`，例如 `topic=星期日` 时用 `query=星期日 崩坏星穹铁道 Sunday HSR`。
 2. 选择有 URL、有摘要且可信度为 `medium` 或 `high` 的来源；如果没有 medium/high，可选择 `unknown` 但必须在输出里标注待复核。
-3. 调用 `ingest_current_research`，传入 `topic`、`auto_select=true` 和 `limit`。不要把完整 sources JSON 作为参数传入。
+3. 调用 `ingest_current_research`，传入 `topic`、必要时的 `query`、`auto_select=true` 和 `limit`。不要把完整 sources JSON 作为参数传入。
 4. 调用 `retrieve_knowledge` 验证入库后能被检索到。
 5. 汇报自动选择依据、入库条数、路径和检索验证摘要。
 
 如果用户已经明确给出编号：
 
-1. 调用 `ingest_current_research`，传入 `topic` 和用户确认的 `selected_indices`。不要把完整 sources JSON 作为参数传入。
+1. 调用 `ingest_current_research`，传入 `topic`、必要时的 `query` 和用户确认的 `selected_indices`。不要把完整 sources JSON 作为参数传入。
 2. `selected_indices` 使用用户确认的 1-based 编号。
 3. 调用 `retrieve_knowledge` 验证入库后能被检索到。
 4. 汇报入库条数、路径和检索验证摘要。
@@ -79,6 +79,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 ## 要求
 
 - Telegram 场景优先调用 `ingest_current_research`，避免把完整 sources 大 JSON 塞进工具参数导致截断。
+- 对短词/歧义词必须使用 `query` 消歧；`topic` 用于入库标题，`query` 用于 Exa 检索。
 - 默认只入库用户明确确认的资料；如果用户明确授权自动入库，可以由 Hermes 自动选择来源并调用 `ingest_current_research`。
 - `selected_indices` 必须使用展示给用户的 1-based 编号。
 - 不要把低可信、无 URL、无摘要的资料自动入库；如用户坚持，标记 `needs_review=true`。

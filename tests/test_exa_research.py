@@ -54,15 +54,33 @@ def test_exa_research_service_maps_results():
     assert response.sources[0].ingest_recommendation == "can_ingest_after_review"
 
 
+def test_exa_research_service_accepts_custom_query():
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = request.read().decode("utf-8")
+        assert "星期日 崩坏星穹铁道 Sunday HSR" in payload
+        return httpx.Response(200, json={"results": []})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    settings = Settings(OPENAI_API_KEY=None, EXA_API_KEY="test-exa-key", KNOWLEDGE_DIR=Path("app/knowledge"))
+
+    response = ExaResearchService(settings, client=client).research_topic_sources(
+        "星期日",
+        query="星期日 崩坏星穹铁道 Sunday HSR",
+    )
+
+    assert response.topic == "星期日"
+    assert response.query == "星期日 崩坏星穹铁道 Sunday HSR"
+
+
 def test_exa_research_api(monkeypatch):
     class FakeService:
         def __init__(self, settings):
             self.settings = settings
 
-        def research_topic_sources(self, topic, limit=5, include_domains=None, exclude_domains=None):
+        def research_topic_sources(self, topic, limit=5, include_domains=None, exclude_domains=None, query=None):
             return {
                 "topic": topic,
-                "query": f"{topic} query",
+                "query": query or f"{topic} query",
                 "source": "exa",
                 "sources": [],
                 "notes": ["fake"],
@@ -84,10 +102,10 @@ def test_mcp_research_topic_sources_tool(monkeypatch):
         def __init__(self, settings):
             self.settings = settings
 
-        def research_topic_sources(self, topic, limit=5, include_domains=None, exclude_domains=None):
+        def research_topic_sources(self, topic, limit=5, include_domains=None, exclude_domains=None, query=None):
             from app.schemas.comment import TopicResearchSourcesResponse
 
-            return TopicResearchSourcesResponse(topic=topic, query="fake query", notes=["fake"])
+            return TopicResearchSourcesResponse(topic=topic, query=query or "fake query", notes=["fake"])
 
     monkeypatch.setattr("mcp_server.tools.ExaResearchService", FakeService)
     settings = Settings(OPENAI_API_KEY=None, EXA_API_KEY="x")

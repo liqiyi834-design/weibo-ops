@@ -182,6 +182,7 @@ def ingest_knowledge(
 @mcp.tool
 def ingest_current_research(
     topic: str,
+    query: str | None = None,
     selected_indices: list[int] | None = None,
     auto_select: bool = False,
     limit: int = 5,
@@ -193,6 +194,7 @@ def ingest_current_research(
     """Research a topic and ingest selected 1-based source indices into RAG using short Telegram-friendly args."""
     return ingest_current_research_tool(
         topic=topic,
+        query=query,
         selected_indices=selected_indices,
         auto_select=auto_select,
         limit=limit,
@@ -209,6 +211,7 @@ def research_topic_sources(
     limit: int = 5,
     include_domains: list[str] | None = None,
     exclude_domains: list[str] | None = None,
+    query: str | None = None,
 ) -> dict:
     """Search public background sources for a topic via Exa without ingesting them into RAG."""
     return research_topic_sources_tool(
@@ -216,6 +219,7 @@ def research_topic_sources(
         limit=limit,
         include_domains=include_domains,
         exclude_domains=exclude_domains,
+        query=query,
     )
 
 

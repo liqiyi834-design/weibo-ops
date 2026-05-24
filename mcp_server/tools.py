@@ -196,6 +196,7 @@ def ingest_research_sources_tool(
 
 def ingest_current_research_tool(
     topic: str,
+    query: str | None = None,
     selected_indices: list[int] | None = None,
     auto_select: bool = False,
     limit: int = 5,
@@ -206,13 +207,18 @@ def ingest_current_research_tool(
     settings: Settings | None = None,
 ) -> dict:
     active_settings = settings or get_settings()
-    research = ExaResearchService(active_settings).research_topic_sources(topic=topic, limit=limit)
+    research = ExaResearchService(active_settings).research_topic_sources(
+        topic=topic,
+        limit=limit,
+        query=query,
+    )
     sources = [source.model_dump() for source in research.sources]
     if auto_select:
         selected_indices = _auto_select_research_source_indices(sources)
     if not selected_indices:
         return {
             "topic": topic,
+            "query": research.query,
             "ingested_count": 0,
             "available_count": len(sources),
             "selected_indices": [],
@@ -230,6 +236,7 @@ def ingest_current_research_tool(
         settings=active_settings,
     )
     result["available_count"] = len(sources)
+    result["query"] = research.query
     result["sources"] = _compact_research_sources(sources)
     result["ingested"] = [
         {
@@ -247,6 +254,7 @@ def research_topic_sources_tool(
     limit: int = 5,
     include_domains: list[str] | None = None,
     exclude_domains: list[str] | None = None,
+    query: str | None = None,
     settings: Settings | None = None,
 ) -> dict:
     active_settings = settings or get_settings()
@@ -255,6 +263,7 @@ def research_topic_sources_tool(
         limit=limit,
         include_domains=include_domains,
         exclude_domains=exclude_domains,
+        query=query,
     )
     return response.model_dump()
 

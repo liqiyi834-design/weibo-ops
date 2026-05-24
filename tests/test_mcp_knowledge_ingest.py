@@ -97,10 +97,10 @@ def test_ingest_current_research_tool_uses_short_args(monkeypatch):
         def __init__(self, settings):
             self.settings = settings
 
-        def research_topic_sources(self, topic, limit=5):
+        def research_topic_sources(self, topic, limit=5, query=None):
             return TopicResearchSourcesResponse(
                 topic=topic,
-                query=f"{topic} query",
+                query=query or f"{topic} query",
                 sources=[
                     ResearchSource(
                         title="来源一",
@@ -121,12 +121,14 @@ def test_ingest_current_research_tool_uses_short_args(monkeypatch):
 
     result = ingest_current_research_tool(
         topic="某热点事件",
+        query="某热点事件 精确检索词",
         selected_indices=[2],
         settings=settings,
     )
     saved_content = Path(result["ingested"][0]["path"]).read_text(encoding="utf-8")
 
     assert result["ingested_count"] == 1
+    assert result["query"] == "某热点事件 精确检索词"
     assert result["available_count"] == 2
     assert result["ingested"][0]["source_url"] == "https://example.com/two"
     assert "第二条资料适合短参数入库" in saved_content

@@ -253,6 +253,7 @@ class LocalServiceClient:
             limit=request.limit,
             include_domains=request.include_domains,
             exclude_domains=request.exclude_domains,
+            query=request.query,
         )
         return result.model_dump(mode="json")
 

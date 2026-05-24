@@ -321,6 +321,7 @@ def research_topic_sources(request: TopicResearchSourcesRequest) -> TopicResearc
         limit=request.limit,
         include_domains=request.include_domains,
         exclude_domains=request.exclude_domains,
+        query=request.query,
     )
 
 
