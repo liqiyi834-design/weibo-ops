@@ -17,6 +17,25 @@ API / MCP / Streamlit
 - 真实模型调用只通过 `app/llm`。
 - RAG 只通过 `app/rag` 和 `KnowledgeService`。
 
+## 双入口原则
+
+新功能默认同时考虑两类使用者：
+
+- 真人：通过 Streamlit 工作台、FastAPI 或文档化命令完成选择、审核、确认和修正。
+- Hermes：通过 MCP/FastAPI 调用同一套服务能力，完成定时、批处理、检索、摘要和待审核产物生成。
+
+实现顺序推荐：
+
+```text
+app/services 核心能力
+-> API schema / route
+-> Streamlit 真人入口
+-> MCP tool / Hermes workflow
+-> tests
+```
+
+除非功能明确只属于本地维护脚本，否则不要只做 UI 入口，也不要只做 Hermes 工具入口。这样可以保证同一条业务能力既能由人手动操作，也能被 Hermes 编排复用。
+
 ## 关键目录
 
 ```text
