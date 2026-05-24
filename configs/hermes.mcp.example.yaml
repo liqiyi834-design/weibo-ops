@@ -22,6 +22,7 @@ mcp_servers:
         - select_comment_topics
         - classify_topic
         - research_topic_sources
+        - rerank_topics_with_research
         - retrieve_knowledge
         - generate_comment
         - save_draft

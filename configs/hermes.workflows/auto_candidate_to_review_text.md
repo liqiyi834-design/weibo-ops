@@ -12,6 +12,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - `select_comment_topics`
 - `classify_topic`
 - `research_topic_sources`
+- `rerank_topics_with_research`
 - `retrieve_knowledge`
 - `generate_comment`
 - `safety_check`
@@ -23,7 +24,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 1. 调用 `get_hot_topics`，读取最多 30 条热点。
 2. 调用 `select_comment_topics`，先用硬规则选择最多 6 个候选。
 3. 对候选逐个调用 `research_topic_sources`，每个话题取最多 3 条公开背景来源。
-4. 基于标题、热度、背景来源摘要、风险和账号适配，重新排序并选出最多 3 个最值得生成的主题。
+4. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`，选出最多 3 个最值得生成的主题。
 5. 对每个入选话题调用 `classify_topic`，记录风险、推荐风格和避雷点。
 6. 对每个入选话题调用 `retrieve_knowledge`，检索本地 RAG 中的风格、写法、安全边界和已沉淀资料。
 7. 调用 `generate_comment` 生成文本。`context_text` 必须包含 Exa 临时背景摘要和 RAG 检索摘要；不要把 Exa 结果自动入库。

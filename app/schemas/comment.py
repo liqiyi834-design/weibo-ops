@@ -315,6 +315,45 @@ class TopicResearchSourcesResponse(BaseModel):
     is_configured: bool = True
 
 
+class TopicRerankCandidate(BaseModel):
+    keyword: str = Field(min_length=1)
+    original_score: float = Field(default=0, ge=0, le=100)
+    reason: str = ""
+    recommended_angle: str = ""
+    risk_level: Literal["low", "medium", "high"] = "low"
+    category: str = "unknown"
+    hot_value: str | None = None
+    rank: int | None = None
+    url: str | None = None
+    research_sources: list[ResearchSource] = Field(default_factory=list)
+
+
+class RerankedTopic(BaseModel):
+    keyword: str
+    final_score: float = Field(ge=0, le=100)
+    decision: Literal["select", "backup", "reject"] = "backup"
+    recommended_angle: str = ""
+    risk_level: Literal["low", "medium", "high"] = "low"
+    reason: str = ""
+    needed_context: list[str] = Field(default_factory=list)
+    risk_notes: list[str] = Field(default_factory=list)
+    research_summary: str = ""
+    source_urls: list[str] = Field(default_factory=list)
+
+
+class TopicRerankRequest(BaseModel):
+    candidates: list[TopicRerankCandidate] = Field(default_factory=list)
+    max_results: int = Field(default=3, ge=1, le=10)
+    account_id: str = "today_direct"
+
+
+class TopicRerankResponse(BaseModel):
+    selected: list[RerankedTopic] = Field(default_factory=list)
+    rejected: list[RerankedTopic] = Field(default_factory=list)
+    llm_used: bool = False
+    notes: list[str] = Field(default_factory=list)
+
+
 class StyleInfo(BaseModel):
     id: str
     name: str

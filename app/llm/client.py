@@ -101,6 +101,20 @@ class MockLLMClient(BaseLLMClient):
                     },
                 ]
             }
+        if "topicrerankschema" in lowered:
+            return {
+                "ranked": [
+                    {
+                        "keyword": "test topic",
+                        "final_score": 88,
+                        "decision": "select",
+                        "recommended_angle": "先核对公开来源，再从规则和责任边界切入。",
+                        "reason": "资料有公开来源支撑，适合生成短评。",
+                        "needed_context": [],
+                        "risk_notes": [],
+                    }
+                ]
+            }
         return {
             "one_liner": "这事别急着站队，先把事实和情绪分开看。",
             "short_comment": "目前公开信息还有限，能写的是规则和表达问题，不能把猜测写成定论。热搜可以快，判断要稳。",

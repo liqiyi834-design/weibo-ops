@@ -12,6 +12,7 @@ from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerR
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse, KnowledgeRecord, KnowledgeRecordSummary
 from app.schemas.comment import PlatformRoutingResponse
+from app.schemas.comment import TopicRerankRequest, TopicRerankResponse
 from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
 from app.services.candidate_pool_service import CandidatePoolService
@@ -24,6 +25,7 @@ from app.services.knowledge_service import KnowledgeService
 from app.services.platform_router import LLMPlatformRouter
 from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
+from app.services.topic_rerank_service import TopicRerankService
 from app.services.topic_asset_service import TopicAssetService
 from app.services.topic_selection_service import TopicSelectionService
 from app.services.zhihu_answer_generator import ZhihuAnswerGenerator
@@ -317,4 +319,15 @@ def research_topic_sources(request: TopicResearchSourcesRequest) -> TopicResearc
         limit=request.limit,
         include_domains=request.include_domains,
         exclude_domains=request.exclude_domains,
+    )
+
+
+@router.post("/api/topics/rerank", response_model=TopicRerankResponse)
+def rerank_topics_with_research(request: TopicRerankRequest) -> TopicRerankResponse:
+    settings = get_settings()
+    llm = build_llm_client(settings)
+    return TopicRerankService(llm).rerank(
+        candidates=request.candidates,
+        max_results=request.max_results,
+        account_id=request.account_id,
     )

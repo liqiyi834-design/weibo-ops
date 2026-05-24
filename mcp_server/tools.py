@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from app.core.config import Settings, get_settings
 from app.llm.client import BaseLLMClient, build_llm_client
-from app.schemas.comment import CommentOutput, DraftUpdateRequest, FactSummary, GenerateCommentRequest, HotTopic
+from app.schemas.comment import (
+    CommentOutput,
+    DraftUpdateRequest,
+    FactSummary,
+    GenerateCommentRequest,
+    HotTopic,
+    TopicRerankCandidate,
+)
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_pipeline import GenerationPipeline
@@ -11,6 +18,7 @@ from app.services.knowledge_service import KnowledgeService
 from app.services.safety_checker import SafetyChecker
 from app.services.topic_classifier import TopicClassifier
 from app.services.topic_research_service import TopicResearchService
+from app.services.topic_rerank_service import TopicRerankService
 from app.services.topic_selection_service import TopicSelectionService
 
 
@@ -127,6 +135,24 @@ def research_topic_sources_tool(
         limit=limit,
         include_domains=include_domains,
         exclude_domains=exclude_domains,
+    )
+    return response.model_dump()
+
+
+def rerank_topics_with_research_tool(
+    candidates: list[dict],
+    max_results: int = 3,
+    account_id: str = "today_direct",
+    settings: Settings | None = None,
+    llm: BaseLLMClient | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    active_llm = llm or build_llm_client(active_settings)
+    parsed = [TopicRerankCandidate(**candidate) for candidate in candidates]
+    response = TopicRerankService(active_llm).rerank(
+        candidates=parsed,
+        max_results=max_results,
+        account_id=account_id,
     )
     return response.model_dump()
 

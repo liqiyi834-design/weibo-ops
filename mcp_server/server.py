@@ -9,6 +9,7 @@ from mcp_server.tools import (
     get_hot_topics_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
+    rerank_topics_with_research_tool,
     research_topic_sources_tool,
     retrieve_knowledge_tool,
     safety_check_tool,
@@ -160,6 +161,20 @@ def research_topic_sources(
         limit=limit,
         include_domains=include_domains,
         exclude_domains=exclude_domains,
+    )
+
+
+@mcp.tool
+def rerank_topics_with_research(
+    candidates: list[dict],
+    max_results: int = 3,
+    account_id: str = "today_direct",
+) -> dict:
+    """Rerank coarse topic candidates using Exa research summaries, risk, and account fit."""
+    return rerank_topics_with_research_tool(
+        candidates=candidates,
+        max_results=max_results,
+        account_id=account_id,
     )
 
 
