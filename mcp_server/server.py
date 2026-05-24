@@ -8,6 +8,7 @@ from mcp_server.tools import (
     generate_comment_tool,
     get_ent_topics_tool,
     get_hot_topics_tool,
+    ingest_current_research_tool,
     ingest_knowledge_tool,
     ingest_research_sources_tool,
     list_drafts_tool,
@@ -194,6 +195,30 @@ def ingest_research_sources(
         topic=topic,
         sources=sources,
         selected_indices=selected_indices,
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+        operator_note=operator_note,
+        rebuild_index=rebuild_index,
+    )
+
+
+@mcp.tool
+def ingest_current_research(
+    topic: str,
+    selected_indices: list[int] | None = None,
+    auto_select: bool = False,
+    limit: int = 5,
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+) -> dict:
+    """Research a topic and ingest selected 1-based source indices into RAG using short Telegram-friendly args."""
+    return ingest_current_research_tool(
+        topic=topic,
+        selected_indices=selected_indices,
+        auto_select=auto_select,
+        limit=limit,
         candidate_pool_id=candidate_pool_id,
         candidate_item_id=candidate_item_id,
         operator_note=operator_note,

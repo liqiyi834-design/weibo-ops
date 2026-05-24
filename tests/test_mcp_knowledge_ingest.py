@@ -4,7 +4,8 @@ from uuid import uuid4
 import pytest
 
 from app.core.config import Settings
-from mcp_server.tools import ingest_knowledge_tool, ingest_research_sources_tool
+from app.schemas.comment import ResearchSource, TopicResearchSourcesResponse
+from mcp_server.tools import ingest_current_research_tool, ingest_knowledge_tool, ingest_research_sources_tool
 
 
 def test_ingest_knowledge_tool_saves_and_retrieves_content():
@@ -81,3 +82,52 @@ def test_ingest_research_sources_tool_rejects_out_of_range_index():
             selected_indices=[2],
             settings=settings,
         )
+
+
+def test_ingest_current_research_tool_uses_short_args(monkeypatch):
+    workspace = Path(".rag_index") / f"mcp-current-research-{uuid4().hex}"
+    settings = Settings(
+        OPENAI_API_KEY=None,
+        EXA_API_KEY="test-exa",
+        KNOWLEDGE_DIR=workspace / "knowledge",
+        RAG_INDEX_PATH=workspace / "index.json",
+    )
+
+    class FakeExaResearchService:
+        def __init__(self, settings):
+            self.settings = settings
+
+        def research_topic_sources(self, topic, limit=5):
+            return TopicResearchSourcesResponse(
+                topic=topic,
+                query=f"{topic} query",
+                sources=[
+                    ResearchSource(
+                        title="来源一",
+                        url="https://example.com/one",
+                        summary="第一条资料不应入库。",
+                    ),
+                    ResearchSource(
+                        title="来源二",
+                        url="https://example.com/two",
+                        summary="第二条资料适合短参数入库。",
+                        highlights=["短参数"],
+                        credibility="medium",
+                    ),
+                ],
+            )
+
+    monkeypatch.setattr("mcp_server.tools.ExaResearchService", FakeExaResearchService)
+
+    result = ingest_current_research_tool(
+        topic="某热点事件",
+        selected_indices=[2],
+        settings=settings,
+    )
+    saved_content = Path(result["ingested"][0]["path"]).read_text(encoding="utf-8")
+
+    assert result["ingested_count"] == 1
+    assert result["available_count"] == 2
+    assert result["ingested"][0]["source_url"] == "https://example.com/two"
+    assert "第二条资料适合短参数入库" in saved_content
+    assert "第一条资料不应入库" not in saved_content

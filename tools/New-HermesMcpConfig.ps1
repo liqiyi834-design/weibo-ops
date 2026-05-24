@@ -53,6 +53,7 @@ mcp_servers:
         - retrieve_knowledge
         - ingest_knowledge
         - ingest_research_sources
+        - ingest_current_research
         - build_generation_context
         - generate_comment
         - save_draft

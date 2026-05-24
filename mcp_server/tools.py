@@ -194,6 +194,54 @@ def ingest_research_sources_tool(
     }
 
 
+def ingest_current_research_tool(
+    topic: str,
+    selected_indices: list[int] | None = None,
+    auto_select: bool = False,
+    limit: int = 5,
+    candidate_pool_id: str | None = None,
+    candidate_item_id: str | None = None,
+    operator_note: str | None = None,
+    rebuild_index: bool = True,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    research = ExaResearchService(active_settings).research_topic_sources(topic=topic, limit=limit)
+    sources = [source.model_dump() for source in research.sources]
+    if auto_select:
+        selected_indices = _auto_select_research_source_indices(sources)
+    if not selected_indices:
+        return {
+            "topic": topic,
+            "ingested_count": 0,
+            "available_count": len(sources),
+            "selected_indices": [],
+            "notes": ["No selected indices were provided and auto_select did not find eligible sources."],
+            "sources": _compact_research_sources(sources),
+        }
+    result = ingest_research_sources_tool(
+        topic=topic,
+        sources=sources,
+        selected_indices=selected_indices,
+        candidate_pool_id=candidate_pool_id,
+        candidate_item_id=candidate_item_id,
+        operator_note=operator_note or "Hermes 本轮资料短参数入库。",
+        rebuild_index=rebuild_index,
+        settings=active_settings,
+    )
+    result["available_count"] = len(sources)
+    result["sources"] = _compact_research_sources(sources)
+    result["ingested"] = [
+        {
+            "path": item.get("path"),
+            "source_url": item.get("source_url"),
+            "needs_review": item.get("needs_review"),
+        }
+        for item in result.get("ingested", [])
+    ]
+    return result
+
+
 def research_topic_sources_tool(
     topic: str,
     limit: int = 5,
@@ -381,3 +429,33 @@ def _research_source_content(source: dict) -> str:
         lines.extend(["", "高亮："])
         lines.extend(f"- {highlight}" for highlight in highlights)
     return "\n".join(lines).strip()
+
+
+def _auto_select_research_source_indices(sources: list[dict]) -> list[int]:
+    selected = [
+        index
+        for index, source in enumerate(sources, 1)
+        if source.get("url")
+        and source.get("summary")
+        and source.get("credibility") in {"medium", "high"}
+    ]
+    if selected:
+        return selected[:3]
+    return [
+        index
+        for index, source in enumerate(sources, 1)
+        if source.get("url") and source.get("summary")
+    ][:2]
+
+
+def _compact_research_sources(sources: list[dict]) -> list[dict]:
+    return [
+        {
+            "index": index,
+            "title": source.get("title") or source.get("domain") or source.get("url"),
+            "url": source.get("url"),
+            "credibility": source.get("credibility") or "unknown",
+            "ingest_recommendation": source.get("ingest_recommendation") or "candidate_only",
+        }
+        for index, source in enumerate(sources, 1)
+    ]
