@@ -30,7 +30,7 @@ Use `send_review_message` for staged Telegram delivery:
 - It sends only to the configured home channel.
 - Do not pass or invent arbitrary Telegram user IDs.
 - Use `message_type` values such as `candidate_summary`, `draft_review`, and `workflow_done`.
-- Use a stable `dedupe_key` per run and stage when possible.
+- Use a stable `dedupe_key` per run and stage when possible. The key must include the current run timestamp or session id, not only the date, so repeated manual tests on the same day do not get skipped.
 - Keep each body concise. The service will split long messages, but the agent should still avoid bloat.
 
 ## Workflow: auto_candidate_to_review_text

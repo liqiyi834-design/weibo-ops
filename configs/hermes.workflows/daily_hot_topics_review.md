@@ -40,3 +40,4 @@
 - 不输出发布指令。
 - 不包含 API key、Cookie、token 或真实账号隐私。
 - Telegram 推送优先使用 `send_review_message` 分段发送，不要把完整摘要塞进最终 cron 输出。
+- `send_review_message.dedupe_key` 必须包含本轮运行时间或 session id，不能只用日期，避免同一天多次测试被去重跳过。

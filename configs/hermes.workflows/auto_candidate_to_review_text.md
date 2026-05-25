@@ -99,6 +99,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - 每个话题最多给 1 条主文本和 2 条备选表达。
 - Telegram 推送优先使用 `send_review_message` 分段发送，不要把所有话题塞进最终 cron 输出。
 - `send_review_message` 只能发到配置好的 home channel，不要尝试指定任意 Telegram ID。
+- `send_review_message.dedupe_key` 必须包含本轮运行时间或 session id，不能只用日期，避免同一天多次测试被去重跳过。
 - 不要只输出工具调用结果，要整理成编辑可读的成稿候选。
 - 不要编造事实；微博智搜、Exa 和 RAG 都没有支撑时，明确写“需要补资料”。
 - 对中高风险话题，生成文本要更克制、理性、少定性。
