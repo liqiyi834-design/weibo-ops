@@ -156,3 +156,67 @@ curl raw.githubusercontent.com 安装脚本长时间卡住
 ```
 
 这个经验适用于 mihomo/Clash、Hermes 发行包、浏览器自动化二进制、CLI 工具和其他 GitHub release 资产。
+
+## Hermes Telegram Gateway 假活
+
+现象：
+
+```text
+systemctl is-active hermes-gateway
+-> active
+
+但 Telegram 群里 @ bot 没有回复。
+```
+
+常见原因不是 MCP 工具或业务代码坏了，而是 Hermes Gateway 进程仍在，但 Telegram long polling 已经因为网络/代理异常中断或卡死。此时 systemd 只看到主进程还活着，不代表 Telegram polling 正常。
+
+排查顺序：
+
+1. 看服务状态和最近日志：
+
+```bash
+systemctl is-active hermes-gateway weibo-ops-fastapi mihomo
+journalctl -u hermes-gateway -n 160 --no-pager -o short-iso
+```
+
+重点搜索：
+
+```text
+telegram.error.NetworkError
+httpx.ConnectError
+Telegram polling retry failed
+```
+
+2. 查 Telegram 是否有未消费 update：
+
+```bash
+sudo -u weiboops sh -lc 'set -a; . /home/weiboops/.hermes/.env; set +a; curl -sS -x "$TELEGRAM_PROXY" --max-time 20 "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo"'
+```
+
+只看 `pending_update_count` 和 `last_error_message`，不要输出 token。
+
+3. 查 Telegram 代理链路：
+
+```bash
+curl -x http://127.0.0.1:7890 -I --max-time 20 https://api.telegram.org
+```
+
+如果 `pending_update_count > 0`，而 Hermes 日志在用户 @ 的时间窗没有处理记录，通常说明 Gateway 没有正常拉取 update。
+
+临时修复：
+
+```bash
+systemctl restart hermes-gateway
+```
+
+重启后再次检查 `pending_update_count` 是否下降，以及 Hermes MCP 是否仍可连接：
+
+```bash
+sudo -u weiboops env PATH=/home/weiboops/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HERMES_HOME=/home/weiboops/.hermes /home/weiboops/.local/bin/hermes mcp test hotcomment_ai
+```
+
+后续建议：
+
+- 增加轻量健康检查：定期检查 Telegram `pending_update_count`、最近 gateway 日志和代理连通性。
+- 如果 pending 持续堆积或连续出现 `Telegram polling retry failed`，自动重启 `hermes-gateway`。
+- 不要只依赖 `systemctl active` 判断 Telegram 入口是否健康。
