@@ -96,3 +96,21 @@ def test_mcp_build_generation_context_tool():
     assert response["topic"] == "test topic"
     assert "## 本轮临时背景" in response["context_text"]
     assert response["source_urls"]
+
+
+def test_mcp_build_generation_context_accepts_source_without_url():
+    response = build_generation_context_tool(
+        topic="test topic",
+        research_sources=[
+            {
+                "title": "Weibo AiSearch summary",
+                "domain": "weibo_aisearch",
+                "summary": "Structured background summary from Weibo AiSearch.",
+                "credibility": "medium",
+            }
+        ],
+    )
+
+    assert response["topic"] == "test topic"
+    assert "Weibo AiSearch summary" in response["context_text"]
+    assert response["source_urls"] == []

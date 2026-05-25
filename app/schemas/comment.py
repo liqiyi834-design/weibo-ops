@@ -345,7 +345,7 @@ class TopicResearchMetrics(BaseModel):
 
 class ResearchSource(BaseModel):
     title: str = ""
-    url: str
+    url: str = ""
     domain: str = ""
     published_date: str | None = None
     author: str | None = None
