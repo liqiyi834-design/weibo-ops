@@ -157,6 +157,40 @@ curl raw.githubusercontent.com 安装脚本长时间卡住
 
 这个经验适用于 mihomo/Clash、Hermes 发行包、浏览器自动化二进制、CLI 工具和其他 GitHub release 资产。
 
+### PowerShell patch 编码
+
+在 Windows PowerShell 里不要用普通重定向生成给 Linux/Git 使用的 patch：
+
+```powershell
+git format-patch -1 --stdout HEAD > fix.patch
+```
+
+Windows PowerShell 的 `>` 可能把文本写成 UTF-16 LE。上传到 Linux 后，`git apply` / `git am` 会看到空字节或无法识别补丁，典型表现包括：
+
+```text
+No valid patches in input
+patch does not apply
+file ... Unicode text, UTF-16, little-endian text
+```
+
+推荐做法：
+
+```powershell
+git format-patch -1 --stdout HEAD | Set-Content -LiteralPath fix.patch -Encoding utf8
+```
+
+或直接跳过 patch，使用 `scp` 上传改动后的具体文件，再在服务器上跑测试确认。
+
+如果已经把 UTF-16 patch 上传到 Linux，可临时转码：
+
+```bash
+iconv -f UTF-16LE -t UTF-8 fix.patch > fix.utf8.patch
+git apply --check fix.utf8.patch
+git apply fix.utf8.patch
+```
+
+但如果服务器工作树与本地 commit 上下文不一致，patch 仍可能无法应用；这时优先上传具体文件覆盖，再跑定向测试。
+
 ## Hermes Telegram Gateway 假活
 
 现象：
