@@ -342,6 +342,20 @@ Telegram 推送类 job 必须在 skill 和 job prompt 中同时写硬性输出�
 - 单条消息有长度限制，超长由服务层自动切片。
 - 该工具只用于工作流状态和待过目文本，不用于平台发布、评论、转发、点赞、关注或私信。
 
+分段推送必须保留 RAG 入库入口。每条 `draft_review` 和 `workflow_done` 消息末尾至少给一行：
+
+```text
+RAG 入库：回复「入库 <话题> 自动入库」，或「入库 <话题> 1,3」。
+```
+
+Hermes 收到后续入库指令时的路由：
+
+- 用户给出整理好的资料、URL 或笔记：调用 `ingest_knowledge`。
+- 用户说 `入库 <话题> 自动入库`、`直接入库` 或 `按建议入库`：调用 `ingest_current_research(auto_select=true)`。
+- 用户说 `入库 <话题> 1,3`：调用 `ingest_current_research(selected_indices=[1,3])`。
+- 用户只说 `入库 <话题>`：先调用 `research_topic_sources` 列出编号来源，等待用户确认编号或授权自动入库。
+- 入库后用 `retrieve_knowledge` 做一次召回验证，并只回复入库条数、路径和一行验证摘要。
+
 ## Exa + RAG 的 Hermes 编排原则
 
 Hermes 后续接入 Exa 时，推荐把 Exa 作为“临时背景检索工具”，把 RAG 作为“长期编辑记忆”。

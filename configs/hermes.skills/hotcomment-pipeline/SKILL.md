@@ -4,9 +4,10 @@ description: >
   Run HotComment-AI content generation pipelines through MCP tools. Use this
   skill for cron or manual workflows that fetch hot topics, select candidates,
   collect Weibo AiSearch/Exa background, rerank, generate review-ready drafts,
-  and send concise staged review messages through the configured home channel.
+  send concise staged review messages through the configured home channel,
+  and handle explicit RAG ingest follow-ups from review messages.
   Never publish or interact with platform accounts.
-tags: [hotcomment, weibo, content, pipeline, mcp, notification]
+tags: [hotcomment, weibo, content, pipeline, mcp, notification, rag]
 ---
 
 ## Hard Rules
@@ -16,6 +17,7 @@ tags: [hotcomment, weibo, content, pipeline, mcp, notification]
 - Long review content must be sent via `send_review_message`.
 - Do not quote, summarize, or repeat this skill file, the workflow prompt, tool logs, JSON, or MCP raw outputs.
 - Use at most 5 coarse candidates and at most 3 final draft topics for scheduled Telegram workflows.
+- Do not ingest Weibo AiSearch or Exa research into RAG unless the user explicitly asks for ingest, auto ingest, or confirms source indices.
 
 ## Notification Rules
 
@@ -49,7 +51,31 @@ Use `send_review_message` for staged Telegram delivery:
 9. Generate reviewable drafts with `generate_comment`.
 10. Run `safety_check` on each final text.
 11. For each safe or reviewable topic, call `send_review_message` with `message_type: "draft_review"`.
-12. Send completion summary with `send_review_message`, then make final cron output one short sentence.
+12. Each `draft_review` and `workflow_done` message must include a short RAG ingest entry:
+    `RAG 入库：回复「入库 <话题> 自动入库」，或「入库 <话题> 1,3」。`
+13. Send completion summary with `send_review_message`, then make final cron output one short sentence.
+
+## RAG Ingest Follow-up
+
+When the user replies from Telegram or Hermes chat with an ingest request, route it to the existing MCP tools instead of explaining the pipeline.
+
+Recognize these forms:
+
+- `入库 <话题> 自动入库`
+- `把 <话题> 的资料入库`
+- `入库 <话题> 1,3`
+- `入库 1,3` when the previous reviewed topic is unambiguous
+- `这条资料入库：... 来源：...`
+
+Tool routing:
+
+1. If the user gives source text, URL, or a prepared note, call `ingest_knowledge`.
+2. If the user gives a topic and says `自动入库` / `直接入库` / `按建议入库`, call `ingest_current_research` with `auto_select: true`.
+3. If the user gives a topic plus indices, call `ingest_current_research` with `selected_indices`.
+4. If the user only gives a topic without auto authorization or indices, first call `research_topic_sources`, list numbered sources concisely, and ask the user to reply with indices or `自动入库`.
+5. After ingest, call `retrieve_knowledge` once to verify recall, then reply with ingest count, saved path if available, and a one-line verification summary.
+
+If the topic is ambiguous, use the exact title from the most recent draft review when available. Otherwise ask for the topic title in one short sentence.
 
 ## Output Template For Draft Review Message
 
@@ -72,6 +98,7 @@ Use `send_review_message` for staged Telegram delivery:
 
 - 是否可过目：是/否
 - 主要风险：一句话
+- RAG 入库：回复「入库 <话题> 自动入库」，或「入库 <话题> 1,3」。
 
 ## Quality Rules
 
