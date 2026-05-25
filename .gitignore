@@ -9,6 +9,9 @@ samples/processed/*.json
 
 # Generated reports and temporary outputs
 output/
+*.patch
+.codex-*.tar
+.codex-*.lock
 
 # Browser/runtime scratch files
 tmp/
