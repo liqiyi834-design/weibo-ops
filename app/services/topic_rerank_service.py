@@ -115,7 +115,7 @@ class TopicRerankService:
                     "risk_notes": _string_list(raw.get("risk_notes")),
                 }
             )
-            result.append(item)
+            result.append(self._apply_commercial_policy(item, candidate))
         return sorted(result, key=lambda item: item.final_score, reverse=True)
 
     def _rule_item(self, candidate: TopicRerankCandidate, decision: str | None = None) -> RerankedTopic:
@@ -130,8 +130,23 @@ class TopicRerankService:
             score -= 6
         if not sources:
             score -= 12
+        commercial_signal = self._commercial_promotion_signal(candidate)
+        core_context_missing = self._core_context_missing(candidate)
+        if commercial_signal == "explicit":
+            score -= 24
+            score = min(score, 65)
+        elif commercial_signal == "implicit":
+            score -= 14
+            score = min(score, 70)
+        if commercial_signal and core_context_missing:
+            score -= 18
+            score = min(score, 58)
 
         needed_context = []
+        if commercial_signal:
+            needed_context.append("核验商业活动规则，避免替平台放大推广信息")
+        if commercial_signal and core_context_missing:
+            needed_context.append("热搜核心信息缺失，先补齐阵容、领取规则或叠加条件")
         if not sources:
             needed_context.append("补充公开背景来源")
         if candidate.risk_level != "low":
@@ -139,6 +154,8 @@ class TopicRerankService:
 
         final_score = round(max(0, min(100, score)), 2)
         resolved_decision = decision or ("select" if final_score >= 70 else "backup" if final_score >= 50 else "reject")
+        if commercial_signal and core_context_missing and resolved_decision == "select":
+            resolved_decision = "backup"
         return RerankedTopic(
             keyword=candidate.keyword,
             final_score=final_score,
@@ -151,6 +168,111 @@ class TopicRerankService:
             research_summary=self._research_summary(sources),
             source_urls=[source.url for source in sources if source.url],
         )
+
+    def _apply_commercial_policy(self, item: RerankedTopic, candidate: TopicRerankCandidate) -> RerankedTopic:
+        commercial_signal = self._commercial_promotion_signal(candidate)
+        if not commercial_signal:
+            return item
+
+        core_context_missing = self._core_context_missing(candidate) or self._item_notes_core_missing(item)
+        score = item.final_score
+        notes = list(item.risk_notes)
+        needed_context = list(item.needed_context)
+
+        if commercial_signal == "explicit":
+            score = min(score - 24, 65)
+            notes.append("商业推广标记强，已降权为备选观察")
+        else:
+            score = min(score - 14, 70)
+            notes.append("疑似大促/红包营销词条，已降权")
+        needed_context.append("核验商业活动规则，避免替平台放大推广信息")
+
+        if core_context_missing:
+            score = min(score - 18, 58)
+            notes.append("商业词条核心信息缺失，不进入主推")
+            needed_context.append("热搜核心信息缺失，先补齐阵容、领取规则或叠加条件")
+
+        final_score = round(max(0, min(100, score)), 2)
+        decision = item.decision
+        if core_context_missing:
+            decision = "backup" if final_score >= 45 else "reject"
+        elif final_score < 70 and decision == "select":
+            decision = "backup" if final_score >= 50 else "reject"
+
+        return item.model_copy(
+            update={
+                "final_score": final_score,
+                "decision": decision,
+                "needed_context": _dedupe_strings(needed_context),
+                "risk_notes": _dedupe_strings(notes),
+            }
+        )
+
+    def _commercial_promotion_signal(self, candidate: TopicRerankCandidate) -> str | None:
+        label = str(candidate.label or "").strip().lower()
+        category_label = str(candidate.category_label or "").strip().lower()
+        if label in {"商", "ad", "ads", "commercial", "promotion", "promoted"}:
+            return "explicit"
+        if category_label in {"商", "ad", "ads", "commercial", "promotion", "promoted"}:
+            return "explicit"
+
+        commercial_words = [
+            "红包",
+            "优惠券",
+            "满减",
+            "补贴",
+            "大促",
+            "促销",
+            "618",
+            "双11",
+            "双十二",
+            "开售",
+            "预售",
+            "直播间",
+            "带货",
+        ]
+        brand_words = [
+            "京东",
+            "淘宝",
+            "天猫",
+            "拼多多",
+            "抖音商城",
+            "美团",
+            "饿了么",
+            "小红书",
+        ]
+        if any(word in candidate.keyword for word in commercial_words) and any(
+            word in candidate.keyword for word in brand_words
+        ):
+            return "implicit"
+        if candidate.category == "brand_pr" and any(word in candidate.keyword for word in commercial_words):
+            return "implicit"
+        return None
+
+    def _core_context_missing(self, candidate: TopicRerankCandidate) -> bool:
+        prompt_text = " ".join([candidate.reason, candidate.recommended_angle])
+        missing_markers = ["需要核验", "待核验", "未提及", "缺失", "不明确", "无法确认", "核心信息缺失"]
+        if any(marker in prompt_text for marker in missing_markers):
+            return True
+
+        source_text = self._combined_source_text(candidate)
+        keyword = candidate.keyword
+        if "明星" in keyword and "明星" not in source_text:
+            return True
+        if "红包" in keyword and not any(word in source_text for word in ["领取", "规则", "叠加", "满减", "无门槛"]):
+            return True
+        return False
+
+    def _item_notes_core_missing(self, item: RerankedTopic) -> bool:
+        text = " ".join([item.reason, *item.needed_context, *item.risk_notes])
+        missing_markers = ["需要核验", "待核验", "未提及", "缺失", "不明确", "无法确认", "核心信息缺失"]
+        return any(marker in text for marker in missing_markers)
+
+    def _combined_source_text(self, candidate: TopicRerankCandidate) -> str:
+        parts: list[str] = []
+        for source in candidate.research_sources:
+            parts.extend([source.title, source.summary, " ".join(source.highlights)])
+        return " ".join(part for part in parts if part)
 
     def _account_note(self, account_id: str) -> str:
         try:
@@ -199,3 +321,15 @@ def _string_list(value) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if str(item).strip()]
+
+
+def _dedupe_strings(values: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+    return result

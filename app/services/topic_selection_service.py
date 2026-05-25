@@ -105,6 +105,14 @@ class TopicSelectionService:
             "political_sensitive": 0,
         }.get(category, 0)
 
+        commercial_signal = self._commercial_promotion_signal(topic.keyword, topic)
+        if commercial_signal == "explicit":
+            score -= 28
+            score = min(score, 65)
+        elif commercial_signal == "implicit":
+            score -= 18
+            score = min(score, 70)
+
         return min(100.0, max(score, 0))
 
     def _metric_bonus(self, topic: HotTopic | HotSearchItem) -> float:
@@ -149,6 +157,43 @@ class TopicSelectionService:
             return 42.0
         return 0.0
 
+    def _commercial_promotion_signal(self, keyword: str, topic: HotTopic | HotSearchItem) -> str | None:
+        label = str(getattr(topic, "label", None) or "").strip().lower()
+        category_label = str(getattr(topic, "category_label", None) or "").strip().lower()
+        if label in {"商", "ad", "ads", "commercial", "promotion", "promoted"}:
+            return "explicit"
+        if category_label in {"商", "ad", "ads", "commercial", "promotion", "promoted"}:
+            return "explicit"
+
+        commercial_words = [
+            "红包",
+            "优惠券",
+            "满减",
+            "补贴",
+            "大促",
+            "促销",
+            "618",
+            "双11",
+            "双十二",
+            "开售",
+            "预售",
+            "直播间",
+            "带货",
+        ]
+        brand_words = [
+            "京东",
+            "淘宝",
+            "天猫",
+            "拼多多",
+            "抖音商城",
+            "美团",
+            "饿了么",
+            "小红书",
+        ]
+        if any(word in keyword for word in commercial_words) and any(word in keyword for word in brand_words):
+            return "implicit"
+        return None
+
     def _risk_level(self, category: str, keyword: str) -> str:
         high_words = [
             "习近平",
@@ -184,6 +229,11 @@ class TopicSelectionService:
         metric_parts = self._metric_reason_parts(topic)
         parts.extend(metric_parts)
         parts.extend(self._editor_reason_parts(topic.keyword, category))
+        commercial_signal = self._commercial_promotion_signal(topic.keyword, topic)
+        if commercial_signal == "explicit":
+            parts.append("商业推广标记强，默认降权并转为备选观察")
+        elif commercial_signal == "implicit":
+            parts.append("疑似大促/红包营销词条，需要先确认是否有真实公共议题")
         if risk_level != "low":
             parts.append(f"风险等级为 {risk_level}，需要降温表达")
         return "；".join(parts) or "具备基础热度，可作为备选观察题。"

@@ -106,3 +106,19 @@ def test_topic_selection_preserves_hot_category_label():
     assert response.selected[0].hot_value == "1033108"
     assert response.selected[0].category_label == "movie"
     assert response.selected[0].label == "hot"
+
+
+def test_topic_selection_downranks_commercial_promotion_label():
+    topics = [
+        HotTopic(rank=1, keyword="京东618明星红包上线", hot_value=None, label="商", source="test"),
+        HotTopic(rank=8, keyword="平台售后规则引发争议", hot_value="300000", source="test"),
+    ]
+
+    response = TopicSelectionService().select(topics, max_results=3)
+    by_keyword = {item.keyword: item for item in response.selected}
+
+    commercial = by_keyword["京东618明星红包上线"]
+    consumer_issue = by_keyword["平台售后规则引发争议"]
+    assert commercial.score <= 65
+    assert consumer_issue.score > commercial.score
+    assert "商业推广标记强" in commercial.reason

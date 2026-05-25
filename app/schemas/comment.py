@@ -375,6 +375,8 @@ class TopicRerankCandidate(BaseModel):
     category: str = "unknown"
     hot_value: str | None = None
     rank: int | None = None
+    label: str | None = None
+    category_label: str | None = None
     url: str | None = None
     research_sources: list[ResearchSource] = Field(default_factory=list)
 
