@@ -25,10 +25,10 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 ## 执行步骤
 
 1. 调用 `get_hot_topics`，读取最多 30 条热点。
-2. 调用 `select_comment_topics`，先用硬规则选择最多 3 个候选。
+2. 调用 `select_comment_topics`，先用硬规则选择最多 5 个候选。
 3. 对候选逐个调用 `research_weibo_aisearch`，获取微博站内智搜背景；如果无结果，记录缺资料，不要反复重试。
 4. 对候选逐个调用 `research_topic_sources`，每个话题取最多 3 条 Exa 外部公开背景来源。
-5. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`；`research_sources` 必须合并微博智搜和 Exa 来源，选出最多 2 个最值得生成的主题。
+5. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`；`research_sources` 必须合并微博智搜和 Exa 来源，选出最多 3 个最值得生成的主题。
 6. 对每个入选话题调用 `classify_topic`，记录风险、推荐风格和避雷点。
 7. 对每个入选话题调用 `retrieve_knowledge`，检索本地 RAG 中的风格、写法、安全边界和已沉淀资料。
 8. 调用 `build_generation_context`，把微博智搜/Exa 临时背景、RAG 检索结果、重排结果和分类结果整理成标准 `context_text`。
@@ -42,8 +42,8 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 
 ## 默认参数建议
 
-- `select_comment_topics.max_results`: 3
-- `rerank_topics_with_research.max_results`: 2
+- `select_comment_topics.max_results`: 5
+- `rerank_topics_with_research.max_results`: 3
 - `source_limit`: 30
 - `limit`: 3
 - `account_id`: `today_direct`

@@ -15,7 +15,7 @@ tags: [hotcomment, weibo, content, pipeline, mcp, notification]
 - Final cron output must be a short status line only.
 - Long review content must be sent via `send_review_message`.
 - Do not quote, summarize, or repeat this skill file, the workflow prompt, tool logs, JSON, or MCP raw outputs.
-- Use at most 3 coarse candidates and at most 2 final draft topics for scheduled Telegram workflows.
+- Use at most 5 coarse candidates and at most 3 final draft topics for scheduled Telegram workflows.
 
 ## Notification Rules
 
@@ -36,13 +36,13 @@ Use `send_review_message` for staged Telegram delivery:
 ## Workflow: auto_candidate_to_review_text
 
 1. Fetch hot topics: call `get_hot_topics` with `limit: 30`.
-2. Select candidates: call `select_comment_topics` with `max_results: 3`, `source_limit: 20`.
+2. Select candidates: call `select_comment_topics` with `max_results: 5`, `source_limit: 20`.
 3. Send candidate summary: call `send_review_message` with `message_type: "candidate_summary"`.
 4. Research background for candidates:
    - Prefer `research_weibo_aisearch` for Weibo hot-search topics.
    - Also call `research_topic_sources` with `limit: 3`.
    - If sources are irrelevant, do not pass them as factual support.
-5. Rerank: call `rerank_topics_with_research` with `max_results: 2`.
+5. Rerank: call `rerank_topics_with_research` with `max_results: 3`.
 6. Classify each selected topic with `classify_topic`.
 7. Retrieve local knowledge with `retrieve_knowledge`.
 8. Build context with `build_generation_context`.
