@@ -157,6 +157,46 @@ curl raw.githubusercontent.com 安装脚本长时间卡住
 
 这个经验适用于 mihomo/Clash、Hermes 发行包、浏览器自动化二进制、CLI 工具和其他 GitHub release 资产。
 
+## SSH 传文件卡住先查登录用户
+
+现象：
+
+```text
+scp 很小的文件到服务器却长时间无输出，像是传输极慢。
+```
+
+本次实际原因不是文件大，也不是网络带宽慢，而是使用了错误的 SSH 登录用户：
+
+```text
+weiboops@47.99.102.24 + C:/Users/DenseFog/.ssh/weibo_ops_server
+-> 认证失败或等待认证
+
+root@47.99.102.24 + C:/Users/DenseFog/.ssh/weibo_ops_server
+-> 正常登录
+```
+
+处理原则：
+
+- 传输卡住时，先用短命令验证同一组 `user + key + host` 是否能登录。
+- 不要只根据“卡住”判断为网络慢；小文件 scp 超过几十秒就应优先怀疑认证、DNS、代理或 known_hosts 交互。
+- 当前服务器密钥默认按 `root` 登录可用；需要写项目文件时，用 `root` 上传/安装后再 `chown weiboops:weiboops`。
+- 运行 Hermes、项目服务和 cron 时仍使用 `weiboops` 用户，不要把服务常态改成 root。
+
+推荐验证：
+
+```powershell
+ssh -i $HOME\.ssh\weibo_ops_server root@47.99.102.24 "hostname; id"
+```
+
+推荐上传路径：
+
+```text
+本机 scp 到 /tmp
+-> root install 到 /opt/weibo-ops 或 /home/weiboops/.hermes
+-> chown weiboops:weiboops
+-> grep/命令验证目标文件内容
+```
+
 ### PowerShell patch 编码
 
 在 Windows PowerShell 里不要用普通重定向生成给 Linux/Git 使用的 patch：
