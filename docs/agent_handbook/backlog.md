@@ -108,7 +108,7 @@ TopicAsset
 - 未核实信息必须标注待核验。
 - 入库前要保留来源 URL、抓取时间、摘要、可信度、是否需要人工确认。
 
-### P3B：微博智搜背景采集（API/MCP MVP 已接入）
+### P3B：微博智搜背景采集（工作台/API/MCP MVP 已接入）
 
 微博话题页的智搜结果是热搜背景资料的高价值来源，适合补充微博站内语境。智搜 URL 形态：
 
@@ -130,6 +130,7 @@ url = f"https://s.weibo.com/aisearch?q={quote(f'#{topic}#')}&Refer=weibo_aisearc
 - `app/services/weibo_aisearch_research_service.py`。
 - `POST /api/research/weibo-aisearch`。
 - MCP 工具 `research_weibo_aisearch`。
+- Streamlit 候选池详情页“微博智搜”按钮，可人工勾选入库 RAG。
 - 输入候选话题 `keyword`，自动规范成 `#话题#` 后构造智搜 URL。
 - 带 `WEIBO_COOKIE` 低频请求 `ai.s.weibo.com/api/wis/show.json`。
 - 支持异步轮询，完成后把智搜 Markdown 摘要封装为 `ResearchSource`。
@@ -153,7 +154,6 @@ url = f"https://s.weibo.com/aisearch?q={quote(f'#{topic}#')}&Refer=weibo_aisearc
 
 后续待做：
 
-- Streamlit：候选池详情页“检索微博智搜背景”按钮
 - 生成候选池时把微博智搜 sources 与 Exa sources 合并后进入 `TopicRerankService`
 - 支持将用户确认后的智搜摘要整理入库 RAG
 

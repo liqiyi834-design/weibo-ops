@@ -18,6 +18,7 @@ from app.schemas.comment import KnowledgeIngestRequest
 from app.schemas.comment import StyleMemoryExtractRequest
 from app.schemas.comment import StyleMemoryIngestRequest
 from app.schemas.comment import TopicResearchSourcesRequest
+from app.schemas.comment import WeiboAiSearchResearchRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
 from app.services.draft_service import DraftService
@@ -32,6 +33,7 @@ from app.services.style_service import StyleService
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_asset_service import TopicAssetService
 from app.services.topic_selection_service import TopicSelectionService
+from app.services.weibo_aisearch_research_service import WeiboAiSearchResearchService
 from app.llm.client import build_llm_client
 from app.schemas.comment import GenerateCommentRequest
 from app.schemas.comment import GenerateZhihuAnswerRequest
@@ -98,6 +100,9 @@ class ApiClient:
 
     def research_topic_sources(self, payload: dict) -> dict:
         return self.request("POST", "/api/research/exa", json=payload)
+
+    def research_weibo_aisearch(self, payload: dict) -> dict:
+        return self.request("POST", "/api/research/weibo-aisearch", json=payload)
 
     def list_knowledge_records(
         self,
@@ -285,6 +290,15 @@ class LocalServiceClient:
             include_domains=request.include_domains,
             exclude_domains=request.exclude_domains,
             query=request.query,
+        )
+        return result.model_dump(mode="json")
+
+    def research_weibo_aisearch(self, payload: dict) -> dict:
+        request = WeiboAiSearchResearchRequest(**payload)
+        result = WeiboAiSearchResearchService(self.settings).research_topic_sources(
+            topic=request.topic,
+            max_polls=request.max_polls,
+            poll_interval_seconds=request.poll_interval_seconds,
         )
         return result.model_dump(mode="json")
 
@@ -761,6 +775,7 @@ def research_source_to_knowledge_payload(
     pool: dict,
     item: dict,
     rebuild_index: bool,
+    source_label: str = "本轮检索",
 ) -> dict:
     return {
         "topic": item["keyword"],
@@ -771,7 +786,7 @@ def research_source_to_knowledge_payload(
         "needs_review": True,
         "candidate_pool_id": pool["id"],
         "candidate_item_id": item["id"],
-        "operator_note": "工作台 Exa 本轮检索资料，人工勾选后入库。",
+        "operator_note": f"工作台 {source_label} 资料，人工勾选后入库。",
         "rebuild_index": rebuild_index,
     }
 
@@ -779,22 +794,35 @@ def research_source_to_knowledge_payload(
 def render_research_source_ingestion(api: ApiClient, pool: dict, item: dict) -> None:
     cache_key = f"research_sources_{pool['id']}_{item['id']}"
     st.markdown("#### 本轮资料检索")
-    st.caption("先检索候选资料，人工勾选可信来源后再批量入库 RAG。")
-    col_limit, col_fetch = st.columns([1, 2])
+    st.caption("先检索候选资料，人工勾选可信来源后再批量入库 RAG。Exa 偏外部公开资料，微博智搜偏站内热搜语境。")
+    col_limit, col_fetch_exa, col_fetch_weibo = st.columns([1, 2, 2])
     with col_limit:
         limit = st.slider(
-            "检索数量",
+            "Exa 数量",
             min_value=1,
             max_value=10,
             value=5,
             key=f"research_limit_{pool['id']}_{item['id']}",
         )
-    with col_fetch:
-        if st.button("检索本轮资料", key=f"fetch_research_{pool['id']}_{item['id']}", use_container_width=True):
+    with col_fetch_exa:
+        if st.button("Exa 检索", key=f"fetch_research_{pool['id']}_{item['id']}", use_container_width=True):
             def action() -> None:
-                with st.spinner("正在检索本轮背景资料..."):
+                with st.spinner("正在用 Exa 检索本轮背景资料..."):
                     st.session_state[cache_key] = api.research_topic_sources(
                         {"topic": item["keyword"], "limit": limit}
+                    )
+
+            run_action(action)
+    with col_fetch_weibo:
+        if st.button("微博智搜", key=f"fetch_weibo_aisearch_{pool['id']}_{item['id']}", use_container_width=True):
+            def action() -> None:
+                with st.spinner("正在检索微博智搜背景..."):
+                    st.session_state[cache_key] = api.research_weibo_aisearch(
+                        {
+                            "topic": item["keyword"],
+                            "max_polls": 6,
+                            "poll_interval_seconds": 1.0,
+                        }
                     )
 
             run_action(action)
@@ -804,9 +832,12 @@ def render_research_source_ingestion(api: ApiClient, pool: dict, item: dict) -> 
         return
 
     if not data.get("is_configured", True):
-        st.warning("Exa 还没有配置，无法检索本轮资料。")
+        source_name = data.get("source") or "检索服务"
+        st.warning(f"{source_name} 还没有配置，无法检索本轮资料。")
     for note in data.get("notes") or []:
         st.caption(note)
+    source_label = "微博智搜" if data.get("source") == "weibo_aisearch" else "Exa 本轮检索"
+    st.caption(f"当前来源：{source_label}")
 
     sources = data.get("sources") or []
     if not sources:
@@ -850,6 +881,7 @@ def render_research_source_ingestion(api: ApiClient, pool: dict, item: dict) -> 
                         pool,
                         item,
                         rebuild_index=order == len(selected_indices) - 1,
+                        source_label=source_label,
                     )
                     result = api.ingest_knowledge(payload)
                     ingested_paths.append(result["path"])
