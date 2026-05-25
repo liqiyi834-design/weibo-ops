@@ -15,6 +15,7 @@ from mcp_server.tools import (
     safety_check_tool,
     search_knowledge_tool,
     select_comment_topics_tool,
+    send_review_message_tool,
     save_draft_tool,
     update_draft_tool,
 )
@@ -73,6 +74,40 @@ def test_mcp_safety_check_tool_reviews_text_without_publishing():
     assert result["risk_level"] in {"low", "medium", "high", "blocked"}
     assert result["recommendation"] in {"review_before_publish", "human_review_required", "blocked"}
     assert "issues" in result
+
+
+def test_mcp_send_review_message_tool_uses_controlled_sender():
+    class FakeSender:
+        def send_review_message(self, request):
+            return type(
+                "Response",
+                (),
+                {
+                    "model_dump": lambda self: {
+                        "ok": True,
+                        "channel": request.channel,
+                        "configured": True,
+                        "skipped": False,
+                        "chunk_count": 1,
+                        "sent_count": 1,
+                        "message_ids": [42],
+                        "errors": [],
+                        "dedupe_key": request.dedupe_key,
+                    }
+                },
+            )()
+
+    result = send_review_message_tool(
+        title="本轮候选摘要",
+        body="候选 A",
+        message_type="candidate_summary",
+        dedupe_key="test-key",
+        service=FakeSender(),
+    )
+
+    assert result["ok"] is True
+    assert result["message_ids"] == [42]
+    assert result["dedupe_key"] == "test-key"
 
 
 def test_mcp_get_hot_topics_tool():

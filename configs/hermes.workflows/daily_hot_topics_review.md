@@ -7,12 +7,13 @@
 执行步骤：
 
 1. 调用 `get_hot_topics`，最多读取 30 条热点。
-2. 调用 `select_comment_topics`，最多选择 6 个适合人工审核的话题。
+2. 调用 `select_comment_topics`，最多选择 3 个适合人工审核的话题。
 3. 对入选话题逐条调用 `research_weibo_aisearch` 获取微博站内智搜背景；如果无结果，记录缺资料，不要反复重试。
 4. 对入选话题逐条调用 `research_topic_sources` 获取最多 3 条 Exa 外部公开背景。
-5. 调用 `rerank_topics_with_research`，把原始候选、微博智搜 sources、Exa sources 合并到 `research_sources`，最多保留 5 个候选。
+5. 调用 `rerank_topics_with_research`，把原始候选、微博智搜 sources、Exa sources 合并到 `research_sources`，最多保留 2 个候选。
 6. 对重排入选话题逐条调用 `classify_topic`。
-7. 只输出人工审核摘要，不保存草稿，不发布。
+7. 调用 `send_review_message` 发送“今日候选摘要”，内容包含候选表、高风险提醒和下一步人工动作。
+8. 最终 cron 输出只保留极短状态，例如“今日候选摘要已通过 send_review_message 推送”。
 
 输出格式：
 
@@ -38,3 +39,4 @@
 - 微博智搜和 Exa 都只是本轮临时背景，不默认入库 RAG。
 - 不输出发布指令。
 - 不包含 API key、Cookie、token 或真实账号隐私。
+- Telegram 推送优先使用 `send_review_message` 分段发送，不要把完整摘要塞进最终 cron 输出。

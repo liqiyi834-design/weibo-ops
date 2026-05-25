@@ -14,6 +14,7 @@ from app.schemas.comment import (
     StyleMemoryIngestRequest,
     TopicRerankCandidate,
 )
+from app.schemas.notification import ReviewMessageRequest
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_context_service import GenerationContextService
@@ -21,6 +22,7 @@ from app.services.generation_pipeline import GenerationPipeline
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_service import KnowledgeService
+from app.services.notification_service import NotificationService
 from app.services.safety_checker import SafetyChecker
 from app.services.style_memory_service import StyleMemoryService
 from app.services.topic_classifier import TopicClassifier
@@ -410,6 +412,27 @@ def safety_check_tool(text: str, topic: str = "", context_text: str = "") -> dic
         "recommendation": recommendation,
         "revised_output": result.revised_output.model_dump() if result.revised_output else None,
     }
+
+
+def send_review_message_tool(
+    title: str,
+    body: str,
+    channel: str = "telegram",
+    message_type: str = "workflow_update",
+    dedupe_key: str | None = None,
+    max_chars: int = 3000,
+    service: NotificationService | None = None,
+) -> dict:
+    request = ReviewMessageRequest(
+        title=title,
+        body=body,
+        channel=channel,
+        message_type=message_type,
+        dedupe_key=dedupe_key,
+        max_chars=max_chars,
+    )
+    sender = service or NotificationService()
+    return sender.send_review_message(request).model_dump()
 
 
 def get_hot_topics_tool(limit: int = 20, settings: Settings | None = None) -> dict:

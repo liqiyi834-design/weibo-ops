@@ -21,6 +21,7 @@ from mcp_server.tools import (
     safety_check_tool,
     search_knowledge_tool,
     select_comment_topics_tool,
+    send_review_message_tool,
     save_draft_tool,
     update_draft_tool,
 )
@@ -322,6 +323,26 @@ def build_generation_context(
 def safety_check(text: str, topic: str = "", context_text: str = "") -> dict:
     """Check a candidate draft or text for review risk without publishing anything."""
     return safety_check_tool(text=text, topic=topic, context_text=context_text)
+
+
+@mcp.tool
+def send_review_message(
+    title: str,
+    body: str,
+    channel: str = "telegram",
+    message_type: str = "workflow_update",
+    dedupe_key: str | None = None,
+    max_chars: int = 3000,
+) -> dict:
+    """Send a controlled review/status message to the configured home channel only."""
+    return send_review_message_tool(
+        title=title,
+        body=body,
+        channel=channel,
+        message_type=message_type,
+        dedupe_key=dedupe_key,
+        max_chars=max_chars,
+    )
 
 
 if __name__ == "__main__":

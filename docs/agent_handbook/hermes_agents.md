@@ -109,6 +109,7 @@ configs/hermes.mcp.example.yaml
 - `save_draft`
 - `list_drafts`
 - `safety_check`
+- `send_review_message`
 
 暂不开放的工具方向：
 
@@ -307,6 +308,27 @@ Telegram 推送类 job 必须在 skill 和 job prompt 中同时写硬性输出�
 - `hermes-gateway` 是否存在 Telegram 网络或代理错误。
 
 不要只凭 output 文件里出现 `## Prompt` 就判断“Telegram 发送了 prompt 全文”。
+
+### 分段推送工具
+
+长流程优先使用 `send_review_message` 分段推送，而不是依赖 Hermes cron 的最终 `deliver telegram` 一次性发送所有内容。
+
+推荐拆分：
+
+```text
+候选摘要
+-> 话题 A 待过目
+-> 话题 B 待过目
+-> 本轮完成摘要
+```
+
+`send_review_message` 的边界：
+
+- 只发送到服务器配置好的 Telegram home channel。
+- Hermes 不允许指定任意 Telegram ID。
+- token、home channel 和 proxy 只从服务器环境或 Hermes `.env` 读取。
+- 单条消息有长度限制，超长由服务层自动切片。
+- 该工具只用于工作流状态和待过目文本，不用于平台发布、评论、转发、点赞、关注或私信。
 
 ## Exa + RAG 的 Hermes 编排原则
 

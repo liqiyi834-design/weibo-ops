@@ -18,31 +18,38 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - `build_generation_context`
 - `generate_comment`
 - `safety_check`
+- `send_review_message`
 
 不要使用 `hotcomment_ai:<tool>`，也不要使用 `mcp_hotcomment_ai_<tool>`。如果工具调用失败，不要反复重试同一个错误名字；改用上面的裸工具名。
 
 ## 执行步骤
 
 1. 调用 `get_hot_topics`，读取最多 30 条热点。
-2. 调用 `select_comment_topics`，先用硬规则选择最多 6 个候选。
+2. 调用 `select_comment_topics`，先用硬规则选择最多 3 个候选。
 3. 对候选逐个调用 `research_weibo_aisearch`，获取微博站内智搜背景；如果无结果，记录缺资料，不要反复重试。
 4. 对候选逐个调用 `research_topic_sources`，每个话题取最多 3 条 Exa 外部公开背景来源。
-5. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`；`research_sources` 必须合并微博智搜和 Exa 来源，选出最多 3 个最值得生成的主题。
+5. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`；`research_sources` 必须合并微博智搜和 Exa 来源，选出最多 2 个最值得生成的主题。
 6. 对每个入选话题调用 `classify_topic`，记录风险、推荐风格和避雷点。
 7. 对每个入选话题调用 `retrieve_knowledge`，检索本地 RAG 中的风格、写法、安全边界和已沉淀资料。
 8. 调用 `build_generation_context`，把微博智搜/Exa 临时背景、RAG 检索结果、重排结果和分类结果整理成标准 `context_text`。
 9. 调用 `generate_comment` 生成文本，`context_text` 必须使用 `build_generation_context` 返回的 `context_text`；不要把微博智搜或 Exa 结果自动入库。
 10. 对每个生成文本调用 `safety_check`。
-11. 只把通过审核或可人工修改的文本输出给用户过目；如有 blocked 项，放入“暂不采用”区，不输出为可用文本。
+11. 调用 `send_review_message` 分段推送结果：
+    - 候选初筛后，发送 1 条“本轮候选摘要”。
+    - 每个入选话题完成 `generate_comment` 和 `safety_check` 后，发送 1 条“话题待过目”，包含背景依据、生成文本、备选表达和审核意见。
+    - 全部完成后，发送 1 条“本轮完成”，列出已推送条数和暂不采用话题。
+12. 最终 cron 输出只保留极短状态，例如“本轮完成，已通过 send_review_message 分段推送 3 条”。不要在最终输出里重复完整草稿。
 
 ## 默认参数建议
 
-- `max_results`: 6
+- `select_comment_topics.max_results`: 3
+- `rerank_topics_with_research.max_results`: 2
 - `source_limit`: 30
 - `limit`: 3
 - `account_id`: `today_direct`
 - `emotion_level`: 6
 - `use_rag`: true
+- `send_review_message.max_chars`: 3000
 
 ## 输出格式
 
@@ -90,6 +97,8 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 
 - 输出的正文要能直接让用户阅读和评价。
 - 每个话题最多给 1 条主文本和 2 条备选表达。
+- Telegram 推送优先使用 `send_review_message` 分段发送，不要把所有话题塞进最终 cron 输出。
+- `send_review_message` 只能发到配置好的 home channel，不要尝试指定任意 Telegram ID。
 - 不要只输出工具调用结果，要整理成编辑可读的成稿候选。
 - 不要编造事实；微博智搜、Exa 和 RAG 都没有支撑时，明确写“需要补资料”。
 - 对中高风险话题，生成文本要更克制、理性、少定性。

@@ -19,6 +19,7 @@ from app.schemas.comment import TopicRerankRequest, TopicRerankResponse
 from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
 from app.schemas.comment import WeiboAiSearchResearchRequest
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
+from app.schemas.notification import ReviewMessageRequest, ReviewMessageResponse
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.candidate_context_service import build_candidate_background_context
 from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
@@ -30,6 +31,7 @@ from app.services.hermes_status_service import HermesStatusService
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.knowledge_service import KnowledgeService
+from app.services.notification_service import NotificationService
 from app.services.platform_router import LLMPlatformRouter
 from app.services.style_memory_service import StyleMemoryService
 from app.services.style_service import StyleService
@@ -69,6 +71,11 @@ def health() -> dict[str, str]:
 @router.get("/api/system/hermes-status")
 def hermes_status() -> dict:
     return HermesStatusService().status()
+
+
+@router.post("/api/notifications/review-message", response_model=ReviewMessageResponse)
+def send_review_message(request: ReviewMessageRequest) -> ReviewMessageResponse:
+    return NotificationService().send_review_message(request)
 
 
 @router.get("/api/hot/weibo")

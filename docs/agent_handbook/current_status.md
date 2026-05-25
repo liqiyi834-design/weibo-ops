@@ -151,6 +151,9 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `research_weibo_aisearch`
 - `rerank_topics_with_research`
 - `build_generation_context`
+- `send_review_message`
+
+`send_review_message` 是 Hermes 分段推送工具，只发送到已配置的 home channel，用于候选摘要、话题待过目和完成摘要；不允许 Hermes 指定任意 Telegram ID。
 
 启动：
 
@@ -202,6 +205,7 @@ tests/test_draft_service.py
 tests/test_knowledge_ingestion.py
 tests/test_zhihu_domain_service.py
 tests/test_topic_asset_service.py
+tests/test_notification_service.py
 ```
 
 最新验证：
@@ -213,5 +217,5 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-88 passed
+94 passed
 ```

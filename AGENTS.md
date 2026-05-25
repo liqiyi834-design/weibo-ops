@@ -60,7 +60,7 @@ docs/agent_handbook/platform_video.md
 - 草稿箱第一版。
 - 本地 RAG 与人工背景资料入库。
 - 风格记忆库 MVP：工作台/API/MCP 支持把公开或授权文本提炼成写法规则并入库 RAG。
-- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_current_research`。
+- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_current_research`、`send_review_message`。
 - 已确认 Hermes agents 支持 MCP，可作为后续自动化编排器接入现有 MCP 工具。
 - 轻量多账号配置与表达风格配置。
 - 知乎回答草稿 MVP 与知乎垂直领域适配。
@@ -74,7 +74,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前结果：
 
 ```text
-88 passed
+94 passed
 ```
 
 详情见 [current_status.md](docs/agent_handbook/current_status.md)。
@@ -185,6 +185,14 @@ bash tools/start_hermes_mcp.sh --python /opt/weibo-ops/.venv/bin/python
 ```powershell
 .\tools\Invoke-HermesWorkflow.ps1 -Workflow style_memory_ingest
 ```
+
+Hermes 分段推送工具：
+
+```text
+send_review_message
+```
+
+该工具只发送到已配置的 home channel，用于候选摘要、话题待过目和完成摘要；不得让 Hermes 指定任意收件人或执行平台互动。
 
 运行测试：
 
