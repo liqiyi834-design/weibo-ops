@@ -107,6 +107,49 @@ mihomo -v
 
 这个策略同样适用于 Hermes wheel、浏览器驱动、模型工具二进制和其他 GitHub release 大文件。除非已经确认服务器访问源站稳定，否则不要把服务器直连 GitHub 下载作为默认部署路径。
 
+### 云服务器 Git 防分叉规则
+
+云服务器默认是运行现场，不是开发现场。Git 历史以本机/GitHub 为准。
+
+标准更新路径：
+
+```text
+本机改代码
+-> 本机测试
+-> 本机 commit
+-> 本机 push
+-> 服务器 git pull --ff-only
+-> 重启服务
+```
+
+服务器更新命令优先使用：
+
+```bash
+sudo -iu weiboops
+cd /opt/weibo-ops
+git status --short --branch
+git pull --ff-only origin main
+python -m pytest tests -q -p no:cacheprovider
+sudo systemctl restart weibo-ops-fastapi weibo-ops-streamlit hermes-gateway
+```
+
+如果服务器访问 GitHub 慢或断：
+
+```text
+本机生成已提交版本的文件 / patch / bundle
+-> scp 上传服务器
+-> 服务器只同步工作树或对齐到本机已存在提交
+-> 不在服务器制造新 commit
+```
+
+硬规则：
+
+- 不在服务器随手 `git commit` / `git am`，除非明确准备把该提交推回主仓库。
+- 服务器有临时改动时，先备份 `git status` 和 diff，再决定保留、丢弃或移植到本机提交。
+- 紧急 `scp` 覆盖可以用，但事后必须回到本机提交并让服务器对齐。
+- 部署拉取使用 `git pull --ff-only`；不能快进时先停下来查，不要 merge。
+- Windows 生成 patch 要显式 UTF-8，避免 PowerShell `>` 写成 UTF-16。
+
 ## Streamlit Community Cloud
 
 当前短期部署建议：方案 B。

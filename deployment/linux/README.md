@@ -160,12 +160,37 @@ hermes cron create "30 8 * * *" "读取 configs/hermes.workflows/auto_candidate_
 ```bash
 sudo -iu weiboops
 cd /opt/weibo-ops
-git pull
+git status --short --branch
+git pull --ff-only origin main
 source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest tests -q -p no:cacheprovider
 sudo systemctl restart weibo-ops-fastapi weibo-ops-streamlit hermes-gateway
 ```
+
+### Git 更新边界
+
+服务器只作为部署工作树，默认不在服务器生成新提交。
+
+推荐路径：
+
+```text
+本机 commit/push
+-> 服务器 git pull --ff-only
+-> 测试
+-> 重启服务
+```
+
+如果服务器访问 GitHub 不稳定，优先在本机生成文件、patch 或 bundle 后上传；服务器只同步到本机/GitHub 已存在的提交。不要在服务器上随手 `git commit` 或 `git am` 制造同内容不同 hash 的本地提交。
+
+服务器出现本地改动时：
+
+```bash
+git status --short --branch
+git diff > /tmp/weibo-ops-server.diff
+```
+
+先确认这些改动是否需要移植回本机，再执行覆盖、reset 或重新部署。不要在未备份 diff 的情况下清理工作树。
 
 ## 10. 备份
 

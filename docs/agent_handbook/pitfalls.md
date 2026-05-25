@@ -254,3 +254,51 @@ sudo -u weiboops env PATH=/home/weiboops/.local/bin:/usr/local/sbin:/usr/local/b
 - 增加轻量健康检查：定期检查 Telegram `pending_update_count`、最近 gateway 日志和代理连通性。
 - 如果 pending 持续堆积或连续出现 `Telegram polling retry failed`，自动重启 `hermes-gateway`。
 - 不要只依赖 `systemctl active` 判断 Telegram 入口是否健康。
+
+## Hermes cron 存档不等于 Telegram 实际消息
+
+现象：
+
+```text
+~/.hermes/cron/output/<job_id>/<time>.md
+```
+
+文件中包含 `## Prompt`，甚至包含完整 skill 内容，看起来像把流程说明也发出去了。
+
+实际判断要分开：
+
+- `cron/output` 是完整运行存档，会保留 prompt、skill 注入和结果。
+- Telegram 是否成功要看 `hermes cron list` 里的 `Delivery failed`。
+- 最终可读结果通常在 `## Result` 后面，不要把 `## Prompt` 误判成推送正文。
+
+如果 Telegram 推送超时：
+
+1. 先看 `hermes cron list` 是否 `Last run ... ok`。
+2. 再看是否有 `Delivery failed: Telegram send failed: Timed out`。
+3. 检查最新 output 文件大小和 `## Result` 内容是否过长。
+4. 检查 `journalctl -u hermes-gateway` 中的 Telegram 网络和代理错误。
+
+修复方向：
+
+- 在 Hermes skill 中加入硬性输出约束。
+- 在具体 cron job prompt 中再次约束总字数、话题数量和输出模板。
+- 禁止最终回复复述 skill、系统提示、工具日志、JSON 或 MCP 原始输出。
+
+## 摘要型来源没有 URL
+
+现象：
+
+```text
+GenerationContextRequest
+research_sources.0.url
+Field required
+```
+
+常见原因：微博智搜、人工整理笔记或平台智能摘要是摘要型来源，不一定有单条 URL。如果 schema 强制所有 `ResearchSource` 都必须有 URL，Hermes 在把摘要作为背景传给 `build_generation_context` 时会失败。
+
+处理原则：
+
+- `ResearchSource.url` 允许为空字符串。
+- `source_urls` 只记录非空 URL。
+- 摘要型来源仍要记录 `title`、`domain/source_type`、`summary`、`credibility`。
+- 最终文本标注来源类型，避免把无 URL 摘要伪装成网页引用。

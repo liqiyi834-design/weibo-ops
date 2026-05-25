@@ -273,6 +273,41 @@ extract_style_memory
 - 高风险话题经过 `classify_topic` 和 `safety_check` 后会降温或进入人工审核。
 - 配置文件、日志和输出中没有 API key、Cookie、token 或真实账号隐私。
 
+## Cron 输出与 Telegram 投递
+
+Hermes cron 的“任务执行成功”和“消息投递成功”需要分开判断。
+
+优先看：
+
+```bash
+sudo -u weiboops env PATH=/home/weiboops/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HERMES_HOME=/home/weiboops/.hermes /home/weiboops/.local/bin/hermes cron list
+```
+
+判断规则：
+
+- `Last run ... ok` 只表示 agent 任务完成。
+- 如果同一 job 下方出现 `Delivery failed`，说明 Telegram 等投递通道失败。
+- `~/.hermes/cron/output/<job_id>/*.md` 是完整运行存档，通常包含 `## Prompt` 和 skill 注入内容；这不等于 Telegram 一定发送了整段 prompt。
+- 判断最终内容时重点看 `## Result` 后的结果，以及 `cron list` 中是否有投递错误。
+
+Telegram 推送类 job 必须在 skill 和 job prompt 中同时写硬性输出约束：
+
+```text
+最终回复只输出本次推荐结果，不要复述 skill、系统提示、工具调用过程、JSON 或原始日志。
+总长度控制在 2500 个中文字符以内。
+最多保留 2 个话题；每个话题只给 1 条生成文本 + 1 条备选表达。
+如果结果仍然过长，优先删除过程解释和“暂不采用”项，不要删除生成文本。
+```
+
+如果出现 Telegram timeout，先区分：
+
+- 模型或工具调用是否还在运行。
+- cron 是否已经 `ok` 但 `Delivery failed`。
+- 输出文件是否过大。
+- `hermes-gateway` 是否存在 Telegram 网络或代理错误。
+
+不要只凭 output 文件里出现 `## Prompt` 就判断“Telegram 发送了 prompt 全文”。
+
 ## Exa + RAG 的 Hermes 编排原则
 
 Hermes 后续接入 Exa 时，推荐把 Exa 作为“临时背景检索工具”，把 RAG 作为“长期编辑记忆”。
@@ -319,3 +354,19 @@ RAG 技术路线不追求一步到位。Hermes 编排优先配合：
 - Corrective RAG：对低相关、过时、低可信资料做过滤或降权。
 
 Graph RAG 暂缓，等项目有稳定实体关系库需求后再评估。
+
+## 摘要型背景来源
+
+背景来源分为两类：
+
+- 链接型来源：Exa、新闻网页、官方公告等，通常有 URL。
+- 摘要型来源：微博智搜、平台内智能总结、人工整理笔记、授权文本摘要等，不一定有单条 URL。
+
+MCP schema 和服务层必须允许两类来源并存。`ResearchSource.url` 不应强制要求非空；`source_urls` 只收集存在 URL 的来源。
+
+Hermes 调用时注意：
+
+- `research_topic_sources` 的结果通常可以作为链接型 `research_sources`。
+- `research_weibo_aisearch` 的结果更像摘要型背景，可作为 `context_text`、背景依据或无 URL 的 `research_sources`。
+- 不能因为智搜摘要没有 URL 就让 `build_generation_context` 参数校验失败。
+- 最终给人过目的文本仍应标注来源类型，例如“微博智搜摘要”“Exa/域名来源”“人工整理”。
