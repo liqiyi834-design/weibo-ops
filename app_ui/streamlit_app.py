@@ -20,6 +20,7 @@ from app.schemas.comment import StyleMemoryIngestRequest
 from app.schemas.comment import TopicResearchSourcesRequest
 from app.schemas.comment import WeiboAiSearchResearchRequest
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.candidate_context_service import build_candidate_background_context
 from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
@@ -240,6 +241,7 @@ class LocalServiceClient:
         return [style.model_dump(mode="json") for style in self.style_service.list_styles()]
 
     def create_draft(self, payload: dict) -> dict:
+        payload = self._with_candidate_background_context(payload)
         llm = build_llm_client(self.settings)
         pipeline = GenerationPipeline(self.settings, llm)
         generated = pipeline.generate(GenerateCommentRequest(**payload))
@@ -254,6 +256,7 @@ class LocalServiceClient:
     def create_zhihu_draft(self, payload: dict) -> dict:
         from app.services.zhihu_answer_generator import ZhihuAnswerGenerator
 
+        payload = self._with_candidate_background_context(payload)
         llm = build_llm_client(self.settings)
         generated = ZhihuAnswerGenerator(self.settings, llm).generate(GenerateZhihuAnswerRequest(**payload))
         draft = self.draft_service.save_zhihu_answer(
@@ -323,6 +326,25 @@ class LocalServiceClient:
         llm = build_llm_client(self.settings)
         request = StyleMemoryExtractRequest(**payload)
         return StyleMemoryService(self.settings, llm).extract(request).model_dump(mode="json")
+
+    def _with_candidate_background_context(self, payload: dict) -> dict:
+        pool_id = payload.get("candidate_pool_id")
+        item_id = payload.get("candidate_item_id")
+        if not pool_id or not item_id:
+            return payload
+        try:
+            pool = self.candidate_pool_service.get(pool_id)
+        except FileNotFoundError:
+            return payload
+        item = next((candidate for candidate in pool.items if candidate.id == item_id), None)
+        if not item:
+            return payload
+        updated = dict(payload)
+        updated["context_text"] = build_candidate_background_context(
+            item.model_dump(mode="json"),
+            updated.get("context_text") or "",
+        )
+        return updated
 
     def ingest_style_memory(self, payload: dict) -> dict:
         request = StyleMemoryIngestRequest(**payload)
@@ -1075,12 +1097,15 @@ def render_create_draft_from_candidate(api: ApiClient) -> None:
     with col_c:
         emotion_level = st.slider("情绪强度", min_value=1, max_value=10, value=6)
 
-    default_context = "\n".join(
-        [
-            f"推荐理由：{item['reason']}",
-            f"建议角度：{item['recommended_angle']}",
-            "避坑点：" + "；".join(item.get("avoid_points") or []),
-        ]
+    default_context = build_candidate_background_context(
+        item,
+        "\n".join(
+            [
+                f"推荐理由：{item['reason']}",
+                f"建议角度：{item['recommended_angle']}",
+                "避坑点：" + "；".join(item.get("avoid_points") or []),
+            ]
+        ),
     )
     context_text = st.text_area("补充背景/写作要求", value=default_context, height=140)
     use_rag = st.checkbox("启用 RAG 检索", value=True)

@@ -151,6 +151,9 @@ configs/hermes.workflows/
 ```text
 get_hot_topics
 -> select_comment_topics
+-> research_weibo_aisearch
+-> research_topic_sources
+-> rerank_topics_with_research
 -> classify_topic
 -> 输出候选摘要和风险提示
 ```
@@ -158,6 +161,7 @@ get_hot_topics
 输出要求：
 
 - 最多推荐 5 个话题。
+- 微博智搜和 Exa 只作为本轮临时背景，不默认入库 RAG。
 - 标注风险等级、推荐角度和避雷点。
 - 高风险话题只给理性观察角度，不生成情绪化表达。
 

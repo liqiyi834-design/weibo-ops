@@ -15,7 +15,7 @@ class GenerationContextService:
         sections = [
             f"# Generation Context: {request.topic}",
             "",
-            "## Exa 临时背景",
+            "## 本轮临时背景",
             self._research_section(request.research_sources[: request.max_sources]),
             "",
             "## RAG 编辑记忆",
@@ -29,7 +29,7 @@ class GenerationContextService:
         ]
         notes = []
         if not request.research_sources:
-            notes.append("No Exa research sources were provided.")
+            notes.append("No temporary research sources were provided.")
         if not request.rag_results:
             notes.append("No RAG results were provided.")
         return GenerationContextResponse(
@@ -42,7 +42,7 @@ class GenerationContextService:
 
     def _research_section(self, sources: list[ResearchSource]) -> str:
         if not sources:
-            return "- 暂无 Exa 背景来源；不要编造具体事实。"
+            return "- 暂无本轮背景来源；不要编造具体事实。"
         lines = []
         for index, source in enumerate(sources, 1):
             summary = source.summary or " ".join(source.highlights[:2]) or "无摘要"
@@ -60,7 +60,7 @@ class GenerationContextService:
 
     def _rag_section(self, results: list[RetrievedKnowledge]) -> str:
         if not results:
-            return "- 暂无本地 RAG 结果；仅可使用 Exa 临时背景和通用安全规则。"
+            return "- 暂无本地 RAG 结果；仅可使用本轮临时背景和通用安全规则。"
         lines = []
         for index, item in enumerate(results, 1):
             score = "" if item.score is None else f" score={round(item.score, 4)}"
@@ -108,7 +108,7 @@ class GenerationContextService:
             lines.append("- 需要核验: " + "；".join(needs_verification))
         lines.extend(
             [
-                "- 不要把 Exa 摘要写成已核实结论；缺少 A/B 级来源时要保守表述。",
+                "- 不要把微博智搜/Exa 摘要写成已核实结论；缺少 A/B 级来源时要保守表述。",
                 "- 不要自动发布，不要引导网暴，不要输出隐私信息。",
                 "- 先写事实边界，再给观点；中高风险话题要降温。",
             ]

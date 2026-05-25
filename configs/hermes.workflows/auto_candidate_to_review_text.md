@@ -11,6 +11,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - `get_hot_topics`
 - `select_comment_topics`
 - `classify_topic`
+- `research_weibo_aisearch`
 - `research_topic_sources`
 - `rerank_topics_with_research`
 - `retrieve_knowledge`
@@ -24,14 +25,15 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 
 1. 调用 `get_hot_topics`，读取最多 30 条热点。
 2. 调用 `select_comment_topics`，先用硬规则选择最多 6 个候选。
-3. 对候选逐个调用 `research_topic_sources`，每个话题取最多 3 条公开背景来源。
-4. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`，选出最多 3 个最值得生成的主题。
-5. 对每个入选话题调用 `classify_topic`，记录风险、推荐风格和避雷点。
-6. 对每个入选话题调用 `retrieve_knowledge`，检索本地 RAG 中的风格、写法、安全边界和已沉淀资料。
-7. 调用 `build_generation_context`，把 Exa 临时背景、RAG 检索结果、重排结果和分类结果整理成标准 `context_text`。
-8. 调用 `generate_comment` 生成文本，`context_text` 必须使用 `build_generation_context` 返回的 `context_text`；不要把 Exa 结果自动入库。
-9. 对每个生成文本调用 `safety_check`。
-10. 只把通过审核或可人工修改的文本输出给用户过目；如有 blocked 项，放入“暂不采用”区，不输出为可用文本。
+3. 对候选逐个调用 `research_weibo_aisearch`，获取微博站内智搜背景；如果无结果，记录缺资料，不要反复重试。
+4. 对候选逐个调用 `research_topic_sources`，每个话题取最多 3 条 Exa 外部公开背景来源。
+5. 调用 `rerank_topics_with_research`，输入候选、原始分数、推荐理由、风险和对应的 `research_sources`；`research_sources` 必须合并微博智搜和 Exa 来源，选出最多 3 个最值得生成的主题。
+6. 对每个入选话题调用 `classify_topic`，记录风险、推荐风格和避雷点。
+7. 对每个入选话题调用 `retrieve_knowledge`，检索本地 RAG 中的风格、写法、安全边界和已沉淀资料。
+8. 调用 `build_generation_context`，把微博智搜/Exa 临时背景、RAG 检索结果、重排结果和分类结果整理成标准 `context_text`。
+9. 调用 `generate_comment` 生成文本，`context_text` 必须使用 `build_generation_context` 返回的 `context_text`；不要把微博智搜或 Exa 结果自动入库。
+10. 对每个生成文本调用 `safety_check`。
+11. 只把通过审核或可人工修改的文本输出给用户过目；如有 blocked 项，放入“暂不采用”区，不输出为可用文本。
 
 ## 默认参数建议
 
@@ -89,6 +91,6 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - 输出的正文要能直接让用户阅读和评价。
 - 每个话题最多给 1 条主文本和 2 条备选表达。
 - 不要只输出工具调用结果，要整理成编辑可读的成稿候选。
-- 不要编造事实；Exa 和 RAG 都没有支撑时，明确写“需要补资料”。
+- 不要编造事实；微博智搜、Exa 和 RAG 都没有支撑时，明确写“需要补资料”。
 - 对中高风险话题，生成文本要更克制、理性、少定性。
-- Exa 资料只作为本轮临时上下文，除非用户明确要求，否则不要入库 RAG。
+- 微博智搜和 Exa 资料只作为本轮临时上下文，除非用户明确要求，否则不要入库 RAG。

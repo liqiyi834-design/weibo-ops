@@ -20,6 +20,7 @@ from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSource
 from app.schemas.comment import WeiboAiSearchResearchRequest
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.candidate_context_service import build_candidate_background_context
 from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
@@ -228,6 +229,7 @@ def generate_zhihu_answer(request: GenerateZhihuAnswerRequest) -> GenerateZhihuA
 
 @router.post("/api/drafts", response_model=DraftRecord)
 def create_draft(request: DraftCreateRequest) -> DraftRecord:
+    request = _with_candidate_background_context(request)
     generated = generate_comment(request)
     return DraftService().save(
         generated=generated,
@@ -241,6 +243,7 @@ def create_draft(request: DraftCreateRequest) -> DraftRecord:
 
 @router.post("/api/drafts/zhihu", response_model=DraftRecord)
 def create_zhihu_draft(request: ZhihuDraftCreateRequest) -> DraftRecord:
+    request = _with_candidate_background_context(request)
     generated = generate_zhihu_answer(request)
     return DraftService().save_zhihu_answer(
         generated=generated,
@@ -248,6 +251,23 @@ def create_zhihu_draft(request: ZhihuDraftCreateRequest) -> DraftRecord:
         candidate_pool_id=request.candidate_pool_id,
         candidate_item_id=request.candidate_item_id,
     )
+
+
+def _with_candidate_background_context(request: DraftCreateRequest | ZhihuDraftCreateRequest):
+    if not request.candidate_pool_id or not request.candidate_item_id:
+        return request
+    try:
+        pool = CandidatePoolService().get(request.candidate_pool_id)
+    except FileNotFoundError:
+        return request
+    item = next((candidate for candidate in pool.items if candidate.id == request.candidate_item_id), None)
+    if not item:
+        return request
+    context_text = build_candidate_background_context(
+        item.model_dump(mode="json"),
+        request.context_text,
+    )
+    return request.model_copy(update={"context_text": context_text})
 
 
 @router.get("/api/drafts", response_model=list[DraftSummary])

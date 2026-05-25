@@ -55,7 +55,7 @@ def test_generation_context_service_builds_stable_context():
     response = GenerationContextService().build(_request())
 
     assert response.topic == "test topic"
-    assert "## Exa 临时背景" in response.context_text
+    assert "## 本轮临时背景" in response.context_text
     assert "Official source" in response.context_text
     assert "## RAG 编辑记忆" in response.context_text
     assert "style_rules.md" in response.context_text
@@ -94,5 +94,5 @@ def test_mcp_build_generation_context_tool():
     )
 
     assert response["topic"] == "test topic"
-    assert "## Exa 临时背景" in response["context_text"]
+    assert "## 本轮临时背景" in response["context_text"]
     assert response["source_urls"]

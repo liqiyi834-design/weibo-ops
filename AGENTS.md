@@ -74,7 +74,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前结果：
 
 ```text
-78 passed
+88 passed
 ```
 
 详情见 [current_status.md](docs/agent_handbook/current_status.md)。

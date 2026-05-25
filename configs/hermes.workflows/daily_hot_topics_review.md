@@ -7,9 +7,12 @@
 执行步骤：
 
 1. 调用 `get_hot_topics`，最多读取 30 条热点。
-2. 调用 `select_comment_topics`，最多选择 5 个适合人工审核的话题。
-3. 对入选话题逐条调用 `classify_topic`。
-4. 只输出人工审核摘要，不保存草稿，不发布。
+2. 调用 `select_comment_topics`，最多选择 6 个适合人工审核的话题。
+3. 对入选话题逐条调用 `research_weibo_aisearch` 获取微博站内智搜背景；如果无结果，记录缺资料，不要反复重试。
+4. 对入选话题逐条调用 `research_topic_sources` 获取最多 3 条 Exa 外部公开背景。
+5. 调用 `rerank_topics_with_research`，把原始候选、微博智搜 sources、Exa sources 合并到 `research_sources`，最多保留 5 个候选。
+6. 对重排入选话题逐条调用 `classify_topic`。
+7. 只输出人工审核摘要，不保存草稿，不发布。
 
 输出格式：
 
@@ -32,5 +35,6 @@
 
 - 高风险话题只给理性观察角度。
 - 不编造事实。
+- 微博智搜和 Exa 都只是本轮临时背景，不默认入库 RAG。
 - 不输出发布指令。
 - 不包含 API key、Cookie、token 或真实账号隐私。
