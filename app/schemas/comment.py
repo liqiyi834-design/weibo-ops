@@ -324,6 +324,13 @@ class SelectedTopic(BaseModel):
     zhihu_domain_scores: dict[str, float] = Field(default_factory=dict)
     zhihu_recommended_domain: str | None = None
     zhihu_domain_reason: str | None = None
+    rerank_score: float | None = None
+    rerank_decision: Literal["select", "backup", "reject"] | None = None
+    rerank_reason: str = ""
+    needed_context: list[str] = Field(default_factory=list)
+    research_summary: str = ""
+    source_urls: list[str] = Field(default_factory=list)
+    llm_reranked: bool = False
 
 
 class TopicResearchMetrics(BaseModel):
@@ -470,6 +477,10 @@ class CandidatePool(BaseModel):
 
 class CandidatePoolCreateRequest(TopicSelectionRequest):
     title: str | None = None
+    use_exa_rerank: bool = False
+    exa_research_limit: int = Field(default=5, ge=1, le=10)
+    exa_sources_per_topic: int = Field(default=3, ge=1, le=5)
+    rerank_account_id: str = "today_direct"
 
 
 class CandidatePoolSummary(BaseModel):

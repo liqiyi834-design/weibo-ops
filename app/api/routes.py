@@ -19,6 +19,7 @@ from app.schemas.comment import TopicRerankRequest, TopicRerankResponse
 from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_context_service import GenerationContextService
@@ -107,11 +108,26 @@ def select_comment_topics(request: TopicSelectionRequest) -> TopicSelectionRespo
 @router.post("/api/topic-candidates/pools", response_model=CandidatePool)
 def create_candidate_pool(request: CandidatePoolCreateRequest) -> CandidatePool:
     selection = select_comment_topics(request)
+    selected = selection.selected
+    notes = list(selection.notes)
+    source = selection.source
+    if request.use_exa_rerank:
+        settings = get_settings()
+        llm = build_llm_client(settings)
+        selected, rerank_notes = CandidatePoolRerankService(settings, llm).rerank_selected(
+            selected=selection.selected,
+            max_results=request.max_results,
+            research_limit=request.exa_research_limit,
+            sources_per_topic=request.exa_sources_per_topic,
+            account_id=request.rerank_account_id,
+        )
+        notes.extend(rerank_notes)
+        source = f"{selection.source}+exa_rerank"
     return CandidatePoolService().save(
-        selected=selection.selected,
-        source=selection.source,
+        selected=selected,
+        source=source,
         title=request.title,
-        notes=selection.notes,
+        notes=notes,
     )
 
 

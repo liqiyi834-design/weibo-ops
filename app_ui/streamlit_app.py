@@ -19,6 +19,7 @@ from app.schemas.comment import StyleMemoryExtractRequest
 from app.schemas.comment import StyleMemoryIngestRequest
 from app.schemas.comment import TopicResearchSourcesRequest
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_pipeline import GenerationPipeline
@@ -189,11 +190,25 @@ class LocalServiceClient:
             topics,
             max_results=payload.get("max_results", 10),
         )
+        selected = selection.selected
+        notes = list(selection.notes)
+        source = selection.source
+        if payload.get("use_exa_rerank", False):
+            llm = build_llm_client(self.settings)
+            selected, rerank_notes = CandidatePoolRerankService(self.settings, llm).rerank_selected(
+                selected=selection.selected,
+                max_results=payload.get("max_results", 10),
+                research_limit=payload.get("exa_research_limit", 5),
+                sources_per_topic=payload.get("exa_sources_per_topic", 3),
+                account_id=payload.get("rerank_account_id", "today_direct"),
+            )
+            notes.extend(rerank_notes)
+            source = f"{selection.source}+exa_rerank"
         pool = self.candidate_pool_service.save(
-            selected=selection.selected,
-            source=selection.source,
+            selected=selected,
+            source=source,
             title=payload.get("title"),
-            notes=selection.notes,
+            notes=notes,
         )
         return pool.model_dump(mode="json")
 
@@ -392,6 +407,19 @@ def render_create_pool(api: ApiClient) -> None:
         with col_c:
             research_limit = st.slider("二次采样数量", min_value=1, max_value=10, value=10)
         enrich_metrics = st.checkbox("启用二次采样", value=True)
+        use_exa_rerank = st.checkbox("启用 Exa 背景检索重排", value=False)
+        if use_exa_rerank:
+            rerank_a, rerank_b, rerank_c = st.columns(3)
+            with rerank_a:
+                exa_research_limit = st.slider("Exa 检索候选数", min_value=1, max_value=10, value=min(5, max_results))
+            with rerank_b:
+                exa_sources_per_topic = st.slider("每题来源数", min_value=1, max_value=5, value=3)
+            with rerank_c:
+                rerank_account_id = st.text_input("重排账号", value="today_direct")
+        else:
+            exa_research_limit = 5
+            exa_sources_per_topic = 3
+            rerank_account_id = "today_direct"
         submitted = st.form_submit_button("生成并保存候选池", use_container_width=True)
 
     if submitted:
@@ -401,10 +429,17 @@ def render_create_pool(api: ApiClient) -> None:
             "source_limit": source_limit,
             "enrich_metrics": enrich_metrics,
             "research_limit": research_limit,
+            "use_exa_rerank": use_exa_rerank,
+            "exa_research_limit": exa_research_limit,
+            "exa_sources_per_topic": exa_sources_per_topic,
+            "rerank_account_id": rerank_account_id,
         }
 
         def action() -> None:
-            with st.spinner("正在抓热搜、评分并保存候选池..."):
+            spinner_text = "正在抓热搜、评分并保存候选池..."
+            if use_exa_rerank:
+                spinner_text = "正在抓热搜、Exa 检索背景、重排评分并保存候选池..."
+            with st.spinner(spinner_text):
                 pool = api.create_candidate_pool(payload)
             st.session_state["current_pool_id"] = pool["id"]
             st.success(f"候选池已保存：{pool['id']}")
@@ -624,6 +659,10 @@ def render_topic_asset_detail(api: ApiClient, asset: dict) -> None:
 def render_pool_detail(pool: dict) -> None:
     st.markdown(f"**候选池 ID：** `{pool['id']}`")
     st.markdown(f"**标题：** {pool['title']}")
+    if pool.get("notes"):
+        with st.expander("候选池备注", expanded=False):
+            for note in pool["notes"]:
+                st.write(f"- {note}")
 
     rows = []
     for index, item in enumerate(pool["items"], 1):
@@ -633,6 +672,9 @@ def render_pool_detail(pool: dict) -> None:
                 "状态": item["status"],
                 "话题": item["keyword"],
                 "微博分": item.get("target_platform_scores", {}).get("weibo", item["score"]),
+                "Exa重排分": item.get("rerank_score"),
+                "重排决策": item.get("rerank_decision"),
+                "来源数": len(item.get("source_urls") or []),
                 "知乎分": item.get("target_platform_scores", {}).get("zhihu"),
                 "推荐产线": " / ".join(item.get("recommended_targets") or []),
                 "风险": item["risk_level"],
@@ -641,6 +683,8 @@ def render_pool_detail(pool: dict) -> None:
                 "知乎领域": item.get("zhihu_recommended_domain"),
                 "推荐理由": item["reason"],
                 "建议角度": item["recommended_angle"],
+                "待核验": "；".join(item.get("needed_context") or []),
+                "来源链接": "；".join(item.get("source_urls") or []),
                 "知乎问题": item.get("zhihu_question_title"),
                 "备注": item.get("operator_note"),
                 "item_id": item["id"],

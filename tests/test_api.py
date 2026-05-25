@@ -126,6 +126,54 @@ def test_create_and_update_candidate_pool(monkeypatch):
     assert update_response.json()["items"][0]["status"] == "selected"
 
 
+def test_create_candidate_pool_can_use_exa_rerank(monkeypatch):
+    test_root = Path(".rag_index") / f"api-candidate-pool-rerank-test-{uuid4().hex}"
+    monkeypatch.setattr(routes, "CandidatePoolService", lambda: CandidatePoolService(root=test_root))
+
+    class FakeCandidatePoolRerankService:
+        def __init__(self, settings, llm):
+            pass
+
+        def rerank_selected(self, selected, max_results, research_limit, sources_per_topic, account_id):
+            updated = [
+                item.model_copy(
+                    update={
+                        "score": 91,
+                        "rerank_score": 91,
+                        "rerank_decision": "select",
+                        "rerank_reason": "background is clear",
+                        "source_urls": ["https://example.com/report"],
+                    }
+                )
+                for item in selected[:max_results]
+            ]
+            return updated, ["fake rerank applied"]
+
+    monkeypatch.setattr(routes, "CandidatePoolRerankService", FakeCandidatePoolRerankService)
+    client = TestClient(app)
+
+    create_response = client.post(
+        "/api/topic-candidates/pools",
+        json={
+            "title": "Exa 重排候选池",
+            "max_results": 3,
+            "use_exa_rerank": True,
+            "topics": [
+                {"rank": 1, "keyword": "公共话题A", "hot_value": "1000000"},
+                {"rank": 2, "keyword": "公共话题B", "hot_value": "900000"},
+                {"rank": 3, "keyword": "公共话题C", "hot_value": "800000"},
+            ],
+        },
+    )
+
+    assert create_response.status_code == 200
+    pool = create_response.json()
+    assert pool["source"].endswith("+exa_rerank")
+    assert pool["items"][0]["rerank_score"] == 91
+    assert pool["items"][0]["source_urls"] == ["https://example.com/report"]
+    assert "fake rerank applied" in pool["notes"]
+
+
 def test_topic_asset_api(monkeypatch):
     test_root = Path(".rag_index") / f"api-topic-asset-test-{uuid4().hex}"
     monkeypatch.setattr(routes, "TopicAssetService", lambda: TopicAssetService(root=test_root))

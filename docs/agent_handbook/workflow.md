@@ -206,15 +206,17 @@ LLM 可以参与分发建议，但不能自动拍板。系统只提供推荐去�
 
 ## Exa 背景检索与 RAG 入库时机
 
-后续接入 Exa 后，背景资料不应等到生成前才第一次出现。推荐选题评分链路调整为：
+背景资料不应等到生成前才第一次出现。当前 Streamlit/API 已支持候选池生成时可选 Exa 重排：
 
 ```text
 热搜列表
--> 硬规则粗筛 8-10 条
--> Exa 为每条检索 2-3 条公开背景摘要
--> LLM 基于标题、热度、Exa 摘要、风险提示重新评分
--> 选出 3 条进入生成
--> 生成时继续使用同一批 Exa 临时背景 + RAG 编辑记忆
+-> TopicSelectionService 硬规则粗筛 3-10 条
+-> 勾选“启用 Exa 背景检索重排”
+-> Exa 为前 N 条候选检索 1-5 条公开背景摘要
+-> TopicRerankService 基于标题、热度、Exa 摘要、风险提示重新评分
+-> 候选池保存 rerank_score、rerank_decision、needed_context、source_urls
+-> 人工审核 selected/researched
+-> 后续生成时继续使用 RAG 编辑记忆，必要时再补本轮 Exa 背景
 -> 文本给用户过目
 ```
 

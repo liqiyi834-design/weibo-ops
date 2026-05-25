@@ -7,6 +7,7 @@ from app.core.config import Settings
 from app.llm.client import BaseLLMClient, MockLLMClient
 from app.main import app
 from app.schemas.comment import ResearchSource, TopicRerankCandidate
+from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
 from app.services.topic_rerank_service import TopicRerankService
 from mcp_server.tools import rerank_topics_with_research_tool
 
@@ -155,3 +156,40 @@ def test_mcp_rerank_topics_with_research_tool():
 
     assert result["selected"]
     assert "final_score" in result["selected"][0]
+
+
+class FakeExaResearchService:
+    def research_topic_sources(self, topic: str, limit: int = 5):
+        from app.schemas.comment import TopicResearchSourcesResponse
+
+        return TopicResearchSourcesResponse(
+            topic=topic,
+            query=f"{topic} test",
+            sources=[_source(domain="www.xinhuanet.com", credibility="medium")],
+        )
+
+
+def test_candidate_pool_rerank_applies_exa_fields():
+    from app.schemas.comment import SelectedTopic
+
+    settings = Settings(OPENAI_API_KEY=None, EXA_API_KEY="x", KNOWLEDGE_DIR=Path("app/knowledge"))
+    selected = [
+        SelectedTopic(
+            keyword="topic a",
+            score=82,
+            category="public",
+            risk_level="low",
+            reason="original reason",
+            recommended_angle="original angle",
+        )
+    ]
+
+    updated, notes = CandidatePoolRerankService(
+        settings=settings,
+        exa_service=FakeExaResearchService(),
+    ).rerank_selected(selected, max_results=1)
+
+    assert updated[0].rerank_score is not None
+    assert updated[0].source_urls
+    assert updated[0].target_platform_scores["weibo"] == updated[0].score
+    assert any("Exa 重排已应用" in note for note in notes)
