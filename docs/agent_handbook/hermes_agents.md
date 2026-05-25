@@ -125,6 +125,18 @@ configs/hermes.mcp.example.yaml
 configs/hermes.workflows/
 ```
 
+Hermes skill 的项目内版本位于：
+
+```text
+configs/hermes.skills/hotcomment-pipeline/SKILL.md
+```
+
+服务器上的 Hermes skill 应从该文件同步到：
+
+```text
+/home/weiboops/.hermes/skills/content/hotcomment-pipeline/SKILL.md
+```
+
 本地调用脚本：
 
 ```powershell
