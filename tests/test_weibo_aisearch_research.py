@@ -35,8 +35,12 @@ def test_weibo_aisearch_service_polls_until_completed():
             json={
                 "data": {
                     "status": 2,
-                    "stage": 4,
-                    "msg": "## 原因\n1. 国际油价回落。\n\n[央视财经](https://example.com/news)",
+                    "msg": (
+                        "<think>internal reasoning</think>\n"
+                        "## 原因\n"
+                        "1. 国际油价回落。wbCustomBlock{\"type\":\"quoted\",\"data\":{\"name\":\"source\"}}\n\n"
+                        "[央视财经](https://example.com/news)"
+                    ),
                     "link_list": [{"url": "https://weibo.com/123"}],
                 }
             },
@@ -61,6 +65,8 @@ def test_weibo_aisearch_service_polls_until_completed():
     assert response.sources[0].title == "微博智搜：#油价大跌了#"
     assert response.sources[0].domain == "s.weibo.com"
     assert "国际油价回落" in response.sources[0].summary
+    assert "internal reasoning" not in response.sources[0].summary
+    assert "wbCustomBlock" not in response.sources[0].summary
     assert any("https://weibo.com/123" in item for item in response.sources[0].highlights)
 
 

@@ -54,8 +54,8 @@ class WeiboAiSearchResearchService:
             last_payload = _extract_data(raw)
             status = str(last_payload.get("status") or raw.get("status") or "")
             stage = str(last_payload.get("stage") or raw.get("stage") or "")
-            msg = str(last_payload.get("msg") or last_payload.get("content") or "").strip()
-            if status == "2" and stage == "4" and msg:
+            msg = _message_text(last_payload, raw)
+            if status == "2" and msg:
                 source = self._to_research_source(normalized_topic, page_url, last_payload)
                 return TopicResearchSourcesResponse(
                     topic=topic,
@@ -122,7 +122,7 @@ class WeiboAiSearchResearchService:
         }
 
     def _to_research_source(self, topic: str, page_url: str, payload: dict) -> ResearchSource:
-        msg = str(payload.get("msg") or payload.get("content") or "")
+        msg = _message_text(payload)
         summary = clean_weibo_aisearch_markdown(msg)
         links = _extract_links(payload)
         highlights = _extract_highlights(msg)
@@ -151,6 +151,8 @@ def build_weibo_aisearch_url(topic: str) -> str:
 
 def clean_weibo_aisearch_markdown(value: str) -> str:
     text = unescape(str(value or ""))
+    text = re.sub(r"<think[^>]*>.*?</think>", " ", text, flags=re.S | re.I)
+    text = _strip_wb_custom_blocks(text)
     text = re.sub(r"<script[^>]*>.*?</script>", " ", text, flags=re.S | re.I)
     text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.S | re.I)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -166,10 +168,44 @@ def _extract_data(payload: dict) -> dict:
     return data if isinstance(data, dict) else payload
 
 
+def _message_text(*payloads: dict) -> str:
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            continue
+        value = payload.get("msg") or payload.get("content")
+        if value:
+            return str(value).strip()
+    return ""
+
+
+def _strip_wb_custom_blocks(text: str) -> str:
+    marker = "wbCustomBlock{"
+    while marker in text:
+        start = text.find(marker)
+        brace_start = start + len("wbCustomBlock")
+        depth = 0
+        end = None
+        for index in range(brace_start, len(text)):
+            char = text[index]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    end = index + 1
+                    break
+        if end is None:
+            text = text[:start]
+            break
+        text = text[:start] + " " + text[end:]
+    return text
+
+
 def _extract_highlights(markdown: str) -> list[str]:
     highlights: list[str] = []
-    for line in str(markdown or "").splitlines():
-        text = clean_weibo_aisearch_markdown(line).strip(" -#*")
+    cleaned = clean_weibo_aisearch_markdown(markdown)
+    for line in cleaned.splitlines():
+        text = line.strip(" -#*")
         if not text:
             continue
         if re.match(r"^\d+[.、]", text) or len(text) <= 80:
