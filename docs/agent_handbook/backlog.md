@@ -108,6 +108,49 @@ TopicAsset
 - 未核实信息必须标注待核验。
 - 入库前要保留来源 URL、抓取时间、摘要、可信度、是否需要人工确认。
 
+### P3B：微博智搜背景采集
+
+微博话题页的智搜结果是热搜背景资料的高价值来源，适合补充微博站内语境。智搜 URL 形态：
+
+```text
+https://s.weibo.com/aisearch?q=<URL percent-encoded #话题名#>&Refer=weibo_aisearch
+```
+
+示例构造：
+
+```python
+from urllib.parse import quote
+
+topic = "看不到女干部救灾累哑却盯着金耳环"
+url = f"https://s.weibo.com/aisearch?q={quote(f'#{topic}#')}&Refer=weibo_aisearch"
+```
+
+MVP 建议：
+
+- 新增 `app/services/weibo_aisearch_research_service.py`。
+- 输入候选话题 `keyword`，自动规范成 `#话题#` 后构造智搜 URL。
+- 带 `WEIBO_COOKIE` 低频请求 `s.weibo.com/aisearch` 页面。
+- 解析智搜摘要、关键点、来源链接或可见引用，封装为 `ResearchSource`。
+- 失败时返回 notes：未配置 Cookie、登录重定向、页面无智搜、解析不到摘要。
+- 不追私有 XHR 签名，不做验证码绕过，不做高频采集。
+
+接入顺序：
+
+```text
+微博候选题
+-> 微博智搜 sources
+-> Exa sources
+-> TopicRerankService 重排
+-> 候选池保存 source_urls / needed_context / rerank_score
+-> 人工确认后才可入库 RAG
+```
+
+后续入口：
+
+- FastAPI：`POST /api/research/weibo-aisearch`
+- MCP：`research_weibo_aisearch`
+- Streamlit：候选池详情页“检索微博智搜背景”按钮
+
 ## P4：多平台 HotTopicProvider
 
 目标：统一不同平台热榜读取结果。
