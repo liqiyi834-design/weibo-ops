@@ -23,6 +23,7 @@ from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_context_service import GenerationContextService
 from app.services.generation_pipeline import GenerationPipeline
+from app.services.hermes_status_service import HermesStatusService
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.knowledge_service import KnowledgeService
@@ -59,6 +60,11 @@ def root() -> dict[str, str]:
 @router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.get("/api/system/hermes-status")
+def hermes_status() -> dict:
+    return HermesStatusService().status()
 
 
 @router.get("/api/hot/weibo")

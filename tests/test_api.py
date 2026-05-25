@@ -18,6 +18,18 @@ def test_health():
     assert response.json() == {"status": "ok"}
 
 
+def test_hermes_status_endpoint():
+    client = TestClient(app)
+    response = client.get("/api/system/hermes-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "services" in body
+    assert "telegram" in body
+    assert "mcp" in body
+    assert "hermes_gateway_logs" in body
+
+
 def test_weibo_hot_topics():
     client = TestClient(app)
     response = client.get("/api/hot/weibo?limit=5")

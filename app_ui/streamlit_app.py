@@ -22,6 +22,7 @@ from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_pipeline import GenerationPipeline
+from app.services.hermes_status_service import HermesStatusService
 from app.services.hot_search_service import HotSearchService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.platform_router import LLMPlatformRouter
@@ -139,6 +140,9 @@ class ApiClient:
 
     def route_topic_asset(self, asset_id: str) -> dict:
         return self.request("POST", f"/api/topic-assets/{asset_id}/routing")
+
+    def hermes_status(self) -> dict:
+        return self.request("GET", "/api/system/hermes-status")
 
 
 class LocalServiceClient:
@@ -320,6 +324,9 @@ class LocalServiceClient:
         llm = build_llm_client(self.settings)
         return LLMPlatformRouter(llm).route(asset).model_dump(mode="json")
 
+    def hermes_status(self) -> dict:
+        return HermesStatusService().status()
+
 
 def main() -> None:
     apply_streamlit_secrets_to_env()
@@ -345,8 +352,8 @@ def main() -> None:
         if st.button("检查连接", use_container_width=True):
             run_action(lambda: st.success(api.health()))
 
-    tab_create, tab_assets, tab_pools, tab_drafts, tab_style_memory, tab_config = st.tabs(
-        ["生成候选池", "综合池", "候选池审核", "草稿箱", "风格记忆库", "账号与风格"]
+    tab_create, tab_assets, tab_pools, tab_drafts, tab_style_memory, tab_system, tab_config = st.tabs(
+        ["生成候选池", "综合池", "候选池审核", "草稿箱", "风格记忆库", "系统状态", "账号与风格"]
     )
 
     with tab_create:
@@ -363,6 +370,9 @@ def main() -> None:
 
     with tab_style_memory:
         render_style_memory(api)
+
+    with tab_system:
+        render_system_status(api)
 
     with tab_config:
         render_config(api)
@@ -1376,6 +1386,74 @@ def render_style_memory(api: ApiClient) -> None:
         st.dataframe(cards, use_container_width=True, hide_index=True)
     else:
         st.info("还没有风格记忆卡。")
+
+
+def render_system_status(api: ApiClient) -> None:
+    st.subheader("系统状态")
+    st.caption("用于判断 Hermes、Telegram、MCP 和核心服务是否真的可用。这里只显示状态摘要，不展示 token 或密钥。")
+
+    if st.button("刷新系统状态", use_container_width=True):
+        st.session_state.pop("hermes_status_cache", None)
+
+    def load_status() -> dict:
+        if "hermes_status_cache" not in st.session_state:
+            st.session_state["hermes_status_cache"] = api.hermes_status()
+        return st.session_state["hermes_status_cache"]
+
+    holder: dict[str, Any] = {}
+    run_action(lambda: holder.update(load_status()))
+    if not holder:
+        return
+
+    services = holder.get("services") or {}
+    st.markdown("### 服务")
+    if services:
+        service_rows = [
+            {
+                "服务": name,
+                "状态": info.get("state", "unknown"),
+                "正常": "是" if info.get("ok") else "否",
+                "可检查": "是" if info.get("available") else "否",
+                "错误": info.get("error") or "",
+            }
+            for name, info in services.items()
+        ]
+        st.dataframe(service_rows, use_container_width=True, hide_index=True)
+    else:
+        st.info("没有服务状态数据。")
+
+    telegram = holder.get("telegram") or {}
+    st.markdown("### Telegram")
+    col_a, col_b, col_c, col_d = st.columns(4)
+    col_a.metric("已配置", "是" if telegram.get("configured") else "否")
+    col_b.metric("API 正常", "是" if telegram.get("ok") else "否")
+    col_c.metric("Pending updates", telegram.get("pending_update_count"))
+    col_d.metric("代理", "是" if telegram.get("proxy_configured") else "否")
+    if telegram.get("last_error_message"):
+        st.warning(f"Telegram 最近错误：{telegram['last_error_message']}")
+    if telegram.get("pending_update_count") and telegram.get("pending_update_count") > 0:
+        st.error("Telegram 有未消费 update。如果 Hermes 日志没有处理记录，可能是 Gateway polling 假活。")
+
+    mcp = holder.get("mcp") or {}
+    st.markdown("### Hermes MCP")
+    col_mcp_a, col_mcp_b, col_mcp_c = st.columns(3)
+    col_mcp_a.metric("可检查", "是" if mcp.get("available") else "否")
+    col_mcp_b.metric("连接正常", "是" if mcp.get("ok") else "否")
+    col_mcp_c.metric("工具数", mcp.get("tools_discovered"))
+    summary = mcp.get("summary")
+    if summary:
+        with st.expander("MCP 检查摘要", expanded=False):
+            st.code(summary)
+
+    logs = holder.get("hermes_gateway_logs") or {}
+    st.markdown("### Hermes Gateway 日志")
+    if logs.get("error"):
+        st.warning(logs["error"])
+    lines = logs.get("lines") or []
+    if lines:
+        st.code("\n".join(lines[-30:]))
+    else:
+        st.info("最近日志中没有 warning/error/polling 相关记录。")
 
 
 def render_config(api: ApiClient) -> None:
