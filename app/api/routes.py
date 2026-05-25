@@ -119,12 +119,13 @@ def create_candidate_pool(request: CandidatePoolCreateRequest) -> CandidatePool:
         selected, rerank_notes = CandidatePoolRerankService(settings, llm).rerank_selected(
             selected=selection.selected,
             max_results=request.max_results,
-            research_limit=request.exa_research_limit,
-            sources_per_topic=request.exa_sources_per_topic,
-            account_id=request.rerank_account_id,
-        )
+        research_limit=request.exa_research_limit,
+        sources_per_topic=request.exa_sources_per_topic,
+        account_id=request.rerank_account_id,
+        use_weibo_aisearch=request.use_weibo_aisearch_rerank,
+    )
         notes.extend(rerank_notes)
-        source = f"{selection.source}+exa_rerank"
+        source = f"{selection.source}+research_rerank"
     return CandidatePoolService().save(
         selected=selected,
         source=source,

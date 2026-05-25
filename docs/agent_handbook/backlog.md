@@ -371,35 +371,38 @@ RAG context + Exa context
 
 暂不优先实现 Graph RAG。只有当项目开始长期维护人物、公司、作品、事件、平台规则之间的关系库时，再考虑实体抽取、关系图谱和社区摘要。
 
-## P3A：Exa 参与选题评分与临时背景（MVP 已接入）
+## P3A：微博智搜 + Exa 参与选题评分与临时背景（MVP 已接入）
 
-在现有硬规则评分基础上，已新增候选池生成时的 Exa 背景检索和 `TopicRerankService` rerank。
+在现有硬规则评分基础上，已新增候选池生成时的微博智搜站内背景、Exa 外部背景检索和 `TopicRerankService` rerank。
 
 当前流程：
 
 ```text
 get_hot_topics
 -> select_comment_topics 粗筛 8-10 条
+-> research_weibo_aisearch 调微博智搜补站内语境
 -> research_topic_sources 调 Exa 检索背景
 -> TopicRerankService 输出重排分、决策、理由、角度、风险和待核验点
 -> CandidatePool 保存 rerank_score / rerank_decision / source_urls
 ```
 
-第一版仍不自动入库 RAG。Exa 摘要只作为当次评分依据和候选池审查材料。
+第一版仍不自动入库 RAG。微博智搜和 Exa 摘要只作为当次评分依据和候选池审查材料。
 
 已具备：
 
 - `EXA_API_KEY`
 - `app/services/exa_research_service.py`
 - `POST /api/research/exa`
+- `POST /api/research/weibo-aisearch`
 - MCP 工具 `research_topic_sources`
+- MCP 工具 `research_weibo_aisearch`
 - MCP 工具 `rerank_topics_with_research`
-- Streamlit 候选池生成入口的 Exa 重排开关
+- Streamlit 候选池生成入口的背景检索重排开关
 
 后续待补：
 
 - 生成草稿时复用候选池内 `source_urls` 和 `research_summary` 作为本轮临时背景。
-- Hermes 工作流参数化触发 Exa 重排候选池生成。
+- Hermes 工作流参数化触发背景检索重排候选池生成。
 
 RAG 入库放在用户确认之后：
 

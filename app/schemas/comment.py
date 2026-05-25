@@ -484,6 +484,7 @@ class CandidatePool(BaseModel):
 class CandidatePoolCreateRequest(TopicSelectionRequest):
     title: str | None = None
     use_exa_rerank: bool = False
+    use_weibo_aisearch_rerank: bool = True
     exa_research_limit: int = Field(default=5, ge=1, le=10)
     exa_sources_per_topic: int = Field(default=3, ge=1, le=5)
     rerank_account_id: str = "today_direct"

@@ -169,6 +169,27 @@ class FakeExaResearchService:
         )
 
 
+class FakeWeiboAiSearchResearchService:
+    def research_topic_sources(self, topic: str, max_polls: int = 6, poll_interval_seconds: float = 1.5):
+        from app.schemas.comment import ResearchSource, TopicResearchSourcesResponse
+
+        return TopicResearchSourcesResponse(
+            topic=topic,
+            query=f"#{topic}#",
+            source="weibo_aisearch",
+            sources=[
+                ResearchSource(
+                    title=f"微博智搜：#{topic}#",
+                    url=f"https://s.weibo.com/aisearch?q={topic}",
+                    domain="s.weibo.com",
+                    summary="微博智搜站内背景摘要。",
+                    credibility="medium",
+                    ingest_recommendation="can_ingest_after_review",
+                )
+            ],
+        )
+
+
 def test_candidate_pool_rerank_applies_exa_fields():
     from app.schemas.comment import SelectedTopic
 
@@ -187,9 +208,11 @@ def test_candidate_pool_rerank_applies_exa_fields():
     updated, notes = CandidatePoolRerankService(
         settings=settings,
         exa_service=FakeExaResearchService(),
+        weibo_aisearch_service=FakeWeiboAiSearchResearchService(),
     ).rerank_selected(selected, max_results=1)
 
     assert updated[0].rerank_score is not None
-    assert updated[0].source_urls
+    assert len(updated[0].source_urls) >= 2
+    assert any("s.weibo.com/aisearch" in url for url in updated[0].source_urls)
     assert updated[0].target_platform_scores["weibo"] == updated[0].score
-    assert any("Exa 重排已应用" in note for note in notes)
+    assert any("背景检索重排已应用" in note for note in notes)

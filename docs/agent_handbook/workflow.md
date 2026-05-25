@@ -206,21 +206,22 @@ LLM 可以参与分发建议，但不能自动拍板。系统只提供推荐去�
 
 ## Exa 背景检索与 RAG 入库时机
 
-背景资料不应等到生成前才第一次出现。当前 Streamlit/API 已支持候选池生成时可选 Exa 重排：
+背景资料不应等到生成前才第一次出现。当前 Streamlit/API 已支持候选池生成时可选“微博智搜 + Exa”背景检索重排：
 
 ```text
 热搜列表
 -> TopicSelectionService 硬规则粗筛 3-10 条
--> 勾选“启用 Exa 背景检索重排”
+-> 勾选“启用背景检索重排”
+-> 微博智搜为前 N 条候选补站内热搜语境
 -> Exa 为前 N 条候选检索 1-5 条公开背景摘要
--> TopicRerankService 基于标题、热度、Exa 摘要、风险提示重新评分
+-> TopicRerankService 基于标题、热度、智搜/Exa 摘要、风险提示重新评分
 -> 候选池保存 rerank_score、rerank_decision、needed_context、source_urls
 -> 人工审核 selected/researched
--> 后续生成时继续使用 RAG 编辑记忆，必要时再补本轮 Exa 背景
+-> 后续生成时继续使用 RAG 编辑记忆，必要时再补本轮智搜/Exa 背景
 -> 文本给用户过目
 ```
 
-这里的 Exa 结果是临时上下文，用于当次评分和生成；不默认写入长期 RAG。
+这里的微博智搜和 Exa 结果是临时上下文，用于当次评分和生成；不默认写入长期 RAG。
 
 RAG 入库放在生成之后，由人确认资料或角度有长期复用价值时再触发：
 

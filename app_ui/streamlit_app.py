@@ -206,9 +206,10 @@ class LocalServiceClient:
                 research_limit=payload.get("exa_research_limit", 5),
                 sources_per_topic=payload.get("exa_sources_per_topic", 3),
                 account_id=payload.get("rerank_account_id", "today_direct"),
+                use_weibo_aisearch=payload.get("use_weibo_aisearch_rerank", True),
             )
             notes.extend(rerank_notes)
-            source = f"{selection.source}+exa_rerank"
+            source = f"{selection.source}+research_rerank"
         pool = self.candidate_pool_service.save(
             selected=selected,
             source=source,
@@ -421,19 +422,22 @@ def render_create_pool(api: ApiClient) -> None:
         with col_c:
             research_limit = st.slider("二次采样数量", min_value=1, max_value=10, value=10)
         enrich_metrics = st.checkbox("启用二次采样", value=True)
-        use_exa_rerank = st.checkbox("启用 Exa 背景检索重排", value=False)
+        use_exa_rerank = st.checkbox("启用背景检索重排", value=False)
         if use_exa_rerank:
-            rerank_a, rerank_b, rerank_c = st.columns(3)
+            rerank_a, rerank_b, rerank_c, rerank_d = st.columns(4)
             with rerank_a:
                 exa_research_limit = st.slider("Exa 检索候选数", min_value=1, max_value=10, value=min(5, max_results))
             with rerank_b:
                 exa_sources_per_topic = st.slider("每题来源数", min_value=1, max_value=5, value=3)
             with rerank_c:
                 rerank_account_id = st.text_input("重排账号", value="today_direct")
+            with rerank_d:
+                use_weibo_aisearch_rerank = st.checkbox("加入微博智搜", value=True)
         else:
             exa_research_limit = 5
             exa_sources_per_topic = 3
             rerank_account_id = "today_direct"
+            use_weibo_aisearch_rerank = True
         submitted = st.form_submit_button("生成并保存候选池", use_container_width=True)
 
     if submitted:
@@ -447,12 +451,13 @@ def render_create_pool(api: ApiClient) -> None:
             "exa_research_limit": exa_research_limit,
             "exa_sources_per_topic": exa_sources_per_topic,
             "rerank_account_id": rerank_account_id,
+            "use_weibo_aisearch_rerank": use_weibo_aisearch_rerank,
         }
 
         def action() -> None:
             spinner_text = "正在抓热搜、评分并保存候选池..."
             if use_exa_rerank:
-                spinner_text = "正在抓热搜、Exa 检索背景、重排评分并保存候选池..."
+                spinner_text = "正在抓热搜、检索微博智搜/Exa 背景、重排评分并保存候选池..."
             with st.spinner(spinner_text):
                 pool = api.create_candidate_pool(payload)
             st.session_state["current_pool_id"] = pool["id"]

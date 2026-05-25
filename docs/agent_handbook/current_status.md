@@ -72,7 +72,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - 输出 `score`、`reason`、`risk_level`、`recommended_angle`、`avoid_points`。
 - 风险等级不参与评分，只作为提示和表达边界。
 - 可选二次采样补充 `read_count`、`discussion_count`、`sampled_posts_count`、`controversy_score`。
-- 可选 Exa 背景检索重排：先按硬规则粗筛，再用 Exa 来源和 `TopicRerankService` 重新计算 `rerank_score`、`rerank_decision`、待核验点和来源链接。
+- 可选背景检索重排：先按硬规则粗筛，再用微博智搜站内语境、Exa 外部来源和 `TopicRerankService` 重新计算 `rerank_score`、`rerank_decision`、待核验点和来源链接。
 - 候选状态：`candidate`、`selected`、`skipped`、`researched`。
 - 人工备注 `operator_note`。
 
@@ -98,7 +98,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 已实现：
 
 - 生成今日热搜候选池。
-- 生成候选池时可勾选“启用 Exa 背景检索重排”，重排分、决策、来源数、待核验点会落到候选池详情表。
+- 生成候选池时可勾选“启用背景检索重排”，微博智搜/Exa 来源会参与重排，重排分、决策、来源数、待核验点会落到候选池详情表。
 - 候选池列表与详情。
 - 候选题多选与批量状态更新。
 - 人工背景资料入库与 RAG 重建。

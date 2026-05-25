@@ -11,6 +11,7 @@ from app.schemas.comment import (
 )
 from app.services.exa_research_service import ExaResearchService
 from app.services.topic_rerank_service import TopicRerankService
+from app.services.weibo_aisearch_research_service import WeiboAiSearchResearchService
 
 
 class CandidatePoolRerankService:
@@ -19,10 +20,12 @@ class CandidatePoolRerankService:
         settings: Settings,
         llm: BaseLLMClient | None = None,
         exa_service: ExaResearchService | None = None,
+        weibo_aisearch_service: WeiboAiSearchResearchService | None = None,
         rerank_service: TopicRerankService | None = None,
     ):
         self.settings = settings
         self.exa_service = exa_service or ExaResearchService(settings)
+        self.weibo_aisearch_service = weibo_aisearch_service or WeiboAiSearchResearchService(settings)
         self.rerank_service = rerank_service or TopicRerankService(llm)
 
     def rerank_selected(
@@ -32,12 +35,19 @@ class CandidatePoolRerankService:
         research_limit: int = 5,
         sources_per_topic: int = 3,
         account_id: str = "today_direct",
+        use_weibo_aisearch: bool = True,
     ) -> tuple[list[SelectedTopic], list[str]]:
         if not selected:
             return [], ["没有可重排的候选话题。"]
 
         notes: list[str] = []
-        research_by_keyword = self._research_sources(selected, research_limit, sources_per_topic, notes)
+        research_by_keyword = self._research_sources(
+            selected,
+            research_limit,
+            sources_per_topic,
+            notes,
+            use_weibo_aisearch=use_weibo_aisearch,
+        )
         candidates = [
             self._to_rerank_candidate(item, research_by_keyword.get(item.keyword, []))
             for item in selected
@@ -50,9 +60,10 @@ class CandidatePoolRerankService:
         updated = self._apply_rerank(selected, rerank_response)
         notes.extend(rerank_response.notes)
         notes.append(
-            "Exa 重排已应用："
+            "背景检索重排已应用："
             f"检索 {min(len(selected), research_limit)} 个候选，"
-            f"每个最多 {sources_per_topic} 个来源，"
+            f"Exa 每个最多 {sources_per_topic} 个来源，"
+            f"微博智搜={'yes' if use_weibo_aisearch else 'no'}，"
             f"LLM={'yes' if rerank_response.llm_used else 'no'}。"
         )
         if rerank_response.rejected:
@@ -65,21 +76,32 @@ class CandidatePoolRerankService:
         research_limit: int,
         sources_per_topic: int,
         notes: list[str],
+        use_weibo_aisearch: bool,
     ) -> dict[str, list[ResearchSource]]:
         research_by_keyword: dict[str, list[ResearchSource]] = {}
         for index, item in enumerate(selected):
             if index >= research_limit:
                 break
+            sources: list[ResearchSource] = []
+            if use_weibo_aisearch:
+                weibo_response = self.weibo_aisearch_service.research_topic_sources(
+                    topic=item.keyword,
+                    max_polls=3,
+                    poll_interval_seconds=1.0,
+                )
+                if weibo_response.notes:
+                    notes.extend(f"{item.keyword} / 微博智搜: {note}" for note in weibo_response.notes)
+                sources.extend(weibo_response.sources)
             response = self.exa_service.research_topic_sources(
                 topic=item.keyword,
                 limit=sources_per_topic,
             )
             if response.notes:
-                notes.extend(f"{item.keyword}: {note}" for note in response.notes)
-            research_by_keyword[item.keyword] = response.sources
+                notes.extend(f"{item.keyword} / Exa: {note}" for note in response.notes)
+            sources.extend(response.sources)
+            research_by_keyword[item.keyword] = _dedupe_sources(sources)
             if not response.is_configured:
                 notes.append("Exa 未配置，已退回无网页资料的重排评分。")
-                break
         return research_by_keyword
 
     def _to_rerank_candidate(
@@ -132,7 +154,7 @@ class CandidatePoolRerankService:
                 *reranked.risk_notes,
             ]
         )
-        reason_parts = [f"Exa 重排：{reranked.reason}".strip()]
+        reason_parts = [f"背景检索重排：{reranked.reason}".strip()]
         if original.reason:
             reason_parts.append(f"原始理由：{original.reason}")
         reason = "\n".join(part for part in reason_parts if part)
@@ -163,4 +185,15 @@ def _dedupe(values: list[str]) -> list[str]:
         if text and text not in seen:
             result.append(text)
             seen.add(text)
+    return result
+
+
+def _dedupe_sources(sources: list[ResearchSource]) -> list[ResearchSource]:
+    result: list[ResearchSource] = []
+    seen: set[str] = set()
+    for source in sources:
+        key = source.url or f"{source.domain}:{source.title}"
+        if key and key not in seen:
+            result.append(source)
+            seen.add(key)
     return result

@@ -134,7 +134,15 @@ def test_create_candidate_pool_can_use_exa_rerank(monkeypatch):
         def __init__(self, settings, llm):
             pass
 
-        def rerank_selected(self, selected, max_results, research_limit, sources_per_topic, account_id):
+        def rerank_selected(
+            self,
+            selected,
+            max_results,
+            research_limit,
+            sources_per_topic,
+            account_id,
+            use_weibo_aisearch=True,
+        ):
             updated = [
                 item.model_copy(
                     update={
@@ -168,7 +176,7 @@ def test_create_candidate_pool_can_use_exa_rerank(monkeypatch):
 
     assert create_response.status_code == 200
     pool = create_response.json()
-    assert pool["source"].endswith("+exa_rerank")
+    assert pool["source"].endswith("+research_rerank")
     assert pool["items"][0]["rerank_score"] == 91
     assert pool["items"][0]["source_urls"] == ["https://example.com/report"]
     assert "fake rerank applied" in pool["notes"]
