@@ -27,6 +27,7 @@ from app.services.topic_classifier import TopicClassifier
 from app.services.topic_research_service import TopicResearchService
 from app.services.topic_rerank_service import TopicRerankService
 from app.services.topic_selection_service import TopicSelectionService
+from app.services.weibo_aisearch_research_service import WeiboAiSearchResearchService
 
 
 def generate_comment_tool(
@@ -313,6 +314,21 @@ def research_topic_sources_tool(
         include_domains=include_domains,
         exclude_domains=exclude_domains,
         query=query,
+    )
+    return response.model_dump()
+
+
+def research_weibo_aisearch_tool(
+    topic: str,
+    max_polls: int = 6,
+    poll_interval_seconds: float = 1.5,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    response = WeiboAiSearchResearchService(active_settings).research_topic_sources(
+        topic=topic,
+        max_polls=max_polls,
+        poll_interval_seconds=poll_interval_seconds,
     )
     return response.model_dump()
 

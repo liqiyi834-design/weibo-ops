@@ -373,6 +373,12 @@ class TopicResearchSourcesResponse(BaseModel):
     is_configured: bool = True
 
 
+class WeiboAiSearchResearchRequest(BaseModel):
+    topic: str = Field(min_length=1)
+    max_polls: int = Field(default=6, ge=1, le=10)
+    poll_interval_seconds: float = Field(default=1.5, ge=0, le=10)
+
+
 class TopicRerankCandidate(BaseModel):
     keyword: str = Field(min_length=1)
     original_score: float = Field(default=0, ge=0, le=100)

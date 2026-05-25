@@ -97,6 +97,7 @@ configs/hermes.mcp.example.yaml
 - `select_comment_topics`
 - `classify_topic`
 - `research_topic_sources`
+- `research_weibo_aisearch`
 - `rerank_topics_with_research`
 - `retrieve_knowledge`
 - `extract_style_memory`

@@ -23,14 +23,14 @@ API：
 - `GET /api/hot/weibo`
 - `POST /api/topics/select`
 - `POST /api/topic-candidates/pools`
-- 待办：`POST /api/research/weibo-aisearch`
+- `POST /api/research/weibo-aisearch`
 
 MCP：
 
 - `get_hot_topics`
 - `get_ent_topics`
 - `select_comment_topics`
-- 待办：`research_weibo_aisearch`
+- `research_weibo_aisearch`
 
 ## 评分信号
 
@@ -42,7 +42,7 @@ MCP：
 - 热搜分类 `category_label`，例如电影、综艺、剧集。
 - 二次采样指标：阅读量、讨论量、采样内容数、争议度。
 - Exa 背景检索重排结果。
-- 待办：微博智搜背景摘要和关键点。
+- 微博智搜背景摘要和关键点。
 - 关键词冲突空间。
 - 账号适配度。
 - 低评论空间惩罚。
@@ -61,7 +61,7 @@ MCP：
 
 ## 后续优化
 
-- 接入微博智搜背景采集：通过 `https://s.weibo.com/aisearch?q=<URL编码后的#话题#>&Refer=weibo_aisearch` 获取话题下智搜摘要，封装为 `ResearchSource`，用于候选重排和人工资料审核。
+- 将微博智搜背景采集接入 Streamlit 候选池详情页和候选重排。
 - 加强热度字段解析测试。
 - 根据运营策略决定是否过滤置顶、政务、低评论空间话题。
 - 引入 LLM 二次评审，让推荐理由更像编辑判断。

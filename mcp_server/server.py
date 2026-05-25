@@ -15,6 +15,7 @@ from mcp_server.tools import (
     list_drafts_tool,
     rebuild_knowledge_tool,
     rerank_topics_with_research_tool,
+    research_weibo_aisearch_tool,
     research_topic_sources_tool,
     retrieve_knowledge_tool,
     safety_check_tool,
@@ -264,6 +265,20 @@ def research_topic_sources(
         include_domains=include_domains,
         exclude_domains=exclude_domains,
         query=query,
+    )
+
+
+@mcp.tool
+def research_weibo_aisearch(
+    topic: str,
+    max_polls: int = 6,
+    poll_interval_seconds: float = 1.5,
+) -> dict:
+    """Fetch Weibo AiSearch topic summary as temporary background sources without ingesting into RAG."""
+    return research_weibo_aisearch_tool(
+        topic=topic,
+        max_polls=max_polls,
+        poll_interval_seconds=poll_interval_seconds,
     )
 
 

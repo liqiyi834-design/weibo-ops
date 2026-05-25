@@ -17,6 +17,7 @@ from app.schemas.comment import StyleMemoryExtractRequest, StyleMemoryExtractRes
 from app.schemas.comment import StyleMemoryIngestRequest, StyleMemoryIngestResponse
 from app.schemas.comment import TopicRerankRequest, TopicRerankResponse
 from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
+from app.schemas.comment import WeiboAiSearchResearchRequest
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
@@ -35,6 +36,7 @@ from app.services.topic_research_service import TopicResearchService
 from app.services.topic_rerank_service import TopicRerankService
 from app.services.topic_asset_service import TopicAssetService
 from app.services.topic_selection_service import TopicSelectionService
+from app.services.weibo_aisearch_research_service import WeiboAiSearchResearchService
 from app.services.zhihu_answer_generator import ZhihuAnswerGenerator
 
 router = APIRouter()
@@ -366,6 +368,16 @@ def research_topic_sources(request: TopicResearchSourcesRequest) -> TopicResearc
         include_domains=request.include_domains,
         exclude_domains=request.exclude_domains,
         query=request.query,
+    )
+
+
+@router.post("/api/research/weibo-aisearch", response_model=TopicResearchSourcesResponse)
+def research_weibo_aisearch(request: WeiboAiSearchResearchRequest) -> TopicResearchSourcesResponse:
+    settings = get_settings()
+    return WeiboAiSearchResearchService(settings).research_topic_sources(
+        topic=request.topic,
+        max_polls=request.max_polls,
+        poll_interval_seconds=request.poll_interval_seconds,
     )
 
 
