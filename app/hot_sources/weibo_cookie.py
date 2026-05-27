@@ -11,6 +11,7 @@ from app.hot_sources.mock import MockHotSearchProvider
 
 class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
     source = "weibo_cookie"
+    platform = "weibo"
     endpoint = "https://s.weibo.com/top/summary"
 
     def __init__(
@@ -52,7 +53,7 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
             items = self._parse_items(response.text, limit=limit)
             if not items:
                 raise ValueError("No hot search items found in Weibo cookie response.")
-            return HotSearchResponse(source=self.source, items=items)
+            return HotSearchResponse(source=self.source, platform=self.platform, platforms=[self.platform], items=items)
         except Exception as exc:
             fallback_response = self.fallback.fetch(limit=limit)
             fallback_response.source = self.source
@@ -86,10 +87,12 @@ class WeiboCookieHotSearchProvider(BaseHotSearchProvider):
             items.append(
                 HotSearchItem(
                     rank=rank,
+                    original_rank=rank,
                     keyword=keyword,
                     hot_value=hot_value,
                     category_label=category_label,
                     label=self._extract_label(row),
+                    platform=self.platform,
                     source=self.source,
                     url=build_weibo_search_url(keyword),
                     raw=raw,

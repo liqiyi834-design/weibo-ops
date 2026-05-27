@@ -39,7 +39,7 @@ class LLMPlatformRouter:
         user_prompt = "\n".join(
             [
                 "PlatformRoutingSchema",
-                "请为 TopicAsset 判断适合进入 weibo、zhihu、video 哪些平台池。",
+                "请为 TopicAsset 判断适合进入 weibo、zhihu、video、wechat 哪些平台池。",
                 "必须返回 JSON：{'decisions':[...]}。",
                 "每个 decision 必须包含 target_platform、fit_score、decision、reasons、blockers、suggested_angle、required_research。",
                 "decision 只能是 recommended、optional、not_recommended。",
@@ -54,7 +54,7 @@ class LLMPlatformRouter:
         for item in data["decisions"]:
             decision = PlatformRoutingDecision(topic_asset_id=asset.id, **item)
             by_platform[decision.target_platform] = decision
-        return [by_platform[platform] for platform in ["weibo", "zhihu", "video"] if platform in by_platform]
+        return [by_platform[platform] for platform in ["weibo", "zhihu", "video", "wechat"] if platform in by_platform]
 
 
 def _rule_based_decisions(asset: TopicAsset) -> list[PlatformRoutingDecision]:
@@ -63,22 +63,31 @@ def _rule_based_decisions(asset: TopicAsset) -> list[PlatformRoutingDecision]:
     weibo_score = _number(hot_signals.get("weibo_score")) or 55.0
     zhihu_score = _number(hot_signals.get("zhihu_score")) or 50.0
     video_score = 45.0
+    wechat_score = _number(hot_signals.get("wechat_score")) or 52.0
 
     if asset.risk_level == "high":
         weibo_score -= 28
         zhihu_score -= 12
         video_score -= 24
+        wechat_score -= 14
     if asset.research_status in {"needed", "none"}:
         zhihu_score -= 12
         video_score -= 8
+        wechat_score -= 10
     if any(word in text for word in ["品牌", "公关", "消费", "规则", "平台", "职场", "维权"]):
         zhihu_score += 18
         weibo_score += 8
+        wechat_score += 10
     if any(word in text for word in ["明星", "综艺", "电影", "剧集", "粉丝"]):
         weibo_score += 12
         video_score += 8
+        wechat_score += 4
     if any(word in text for word in ["视觉", "反差", "场景", "视频", "ai"]):
         video_score += 20
+    if any(word in text for word in ["人文", "情感", "关系", "生活", "家庭", "成长", "女性", "心理", "故事"]):
+        wechat_score += 22
+    if any(word in text for word in ["栏目", "随笔", "人物", "书", "电影", "城市", "记忆"]):
+        wechat_score += 12
 
     return [
         _decision(
@@ -108,6 +117,15 @@ def _rule_based_decisions(asset: TopicAsset) -> list[PlatformRoutingDecision]:
             "仅在能转化为非误导性创意提示词时进入视频创意池。",
             ["明确画面边界和不可生成内容"] if asset.risk_level != "low" else [],
         ),
+        _decision(
+            asset.id,
+            "wechat",
+            wechat_score,
+            ["适合沉淀为中等长度文章，强调叙事、价值判断和账号气质。"],
+            ["资料不足时不建议直接写公众号文章。"] if asset.research_status in {"needed", "none"} else [],
+            "从一个具体场景或人文观察切入，展开情绪、关系和生活经验，再收束到克制判断。",
+            ["补充案例、来源和账号栏目定位"] if asset.research_status in {"needed", "none"} else [],
+        ),
     ]
 
 
@@ -118,7 +136,7 @@ def _merge_with_hard_constraints(
     existing = {item.target_platform: item for item in decisions}
     rule_fallback = {item.target_platform: item for item in _rule_based_decisions(asset)}
     merged = []
-    for platform in ["weibo", "zhihu", "video"]:
+    for platform in ["weibo", "zhihu", "video", "wechat"]:
         item = existing.get(platform) or rule_fallback[platform]
         if asset.risk_level == "high" and platform in {"weibo", "video"}:
             item.fit_score = min(item.fit_score, 60)
@@ -126,9 +144,20 @@ def _merge_with_hard_constraints(
             blocker = "高风险话题必须人工复核，不能情绪化表达或自动发布。"
             if blocker not in item.blockers:
                 item.blockers.append(blocker)
+        if asset.risk_level == "high" and platform == "wechat":
+            item.fit_score = min(item.fit_score, 65)
+            item.decision = "optional" if item.fit_score >= 50 else "not_recommended"
+            blocker = "高风险话题如进入公众号，只能做资料充分、降温克制的中长文草稿。"
+            if blocker not in item.blockers:
+                item.blockers.append(blocker)
         if asset.research_status in {"needed", "none"} and platform == "zhihu":
             item.decision = "optional" if item.decision == "recommended" else item.decision
             research = "补充可靠来源后再生成长回答"
+            if research not in item.required_research:
+                item.required_research.append(research)
+        if asset.research_status in {"needed", "none"} and platform == "wechat":
+            item.decision = "optional" if item.decision == "recommended" else item.decision
+            research = "补充案例、事实来源和账号栏目定位后再生成公众号文章"
             if research not in item.required_research:
                 item.required_research.append(research)
         merged.append(item)

@@ -19,7 +19,13 @@ from app.schemas.comment import TopicRerankRequest, TopicRerankResponse
 from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
 from app.schemas.comment import WeiboAiSearchResearchRequest
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
-from app.schemas.feedback import DraftFeedbackRecord, DraftFeedbackRequest, DraftFeedbackResponse
+from app.schemas.feedback import (
+    DraftFeedbackRecord,
+    DraftFeedbackRequest,
+    DraftFeedbackResponse,
+    FeedbackMemorySummarizeRequest,
+    FeedbackMemorySummarizeResponse,
+)
 from app.schemas.notification import ReviewMessageRequest, ReviewMessageResponse
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.candidate_context_service import build_candidate_background_context
@@ -59,6 +65,7 @@ def root() -> dict[str, str]:
         "status": "ok",
         "docs": "/docs",
         "health": "/health",
+        "hot": "/api/hot",
         "hot_weibo": "/api/hot/weibo",
         "generate": "/api/comment/generate",
         "knowledge_rebuild": "/api/knowledge/rebuild",
@@ -87,20 +94,38 @@ def get_weibo_hot_topics(limit: int = 20) -> dict:
     return response.model_dump()
 
 
+@router.get("/api/hot")
+def get_hot_topics(platform: str = "weibo", limit: int = 20) -> dict:
+    settings = get_settings()
+    try:
+        response = HotSearchService(settings).get_hot_topics(platform=platform, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return response.model_dump()
+
+
 @router.post("/api/topics/select", response_model=TopicSelectionResponse)
 def select_comment_topics(request: TopicSelectionRequest) -> TopicSelectionResponse:
     settings = get_settings()
     topics = request.topics
     if not topics:
-        hot_response = HotSearchService(settings).get_weibo_hot_topics(limit=request.source_limit)
+        try:
+            hot_response = HotSearchService(settings).get_hot_topics(
+                platform=request.source_platform,
+                limit=request.source_limit,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         topics = [
             HotTopic(
                 rank=item.rank,
+                original_rank=item.original_rank or item.rank,
                 keyword=item.keyword,
                 hot_value=item.hot_value,
                 category_label=item.category_label,
                 url=item.url,
                 label=item.label,
+                platform=item.platform,
                 source=item.source,
                 timestamp=item.timestamp,
             )
@@ -292,6 +317,13 @@ def record_draft_feedback(request: DraftFeedbackRequest) -> DraftFeedbackRespons
 @router.get("/api/draft-feedback", response_model=list[DraftFeedbackRecord])
 def list_draft_feedback(limit: int = 50) -> list[DraftFeedbackRecord]:
     return DraftFeedbackService().list_records(limit=limit)
+
+
+@router.post("/api/draft-feedback/summarize", response_model=FeedbackMemorySummarizeResponse)
+def summarize_draft_feedback(request: FeedbackMemorySummarizeRequest) -> FeedbackMemorySummarizeResponse:
+    settings = get_settings()
+    llm = build_llm_client(settings) if request.use_llm else None
+    return DraftFeedbackService(settings=settings, llm=llm).summarize_memory(request)
 
 
 @router.get("/api/drafts/{draft_id}", response_model=DraftRecord)

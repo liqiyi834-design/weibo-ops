@@ -41,6 +41,25 @@ def test_weibo_hot_topics():
     assert "keyword" in body["items"][0]
 
 
+def test_hot_topics_unified_endpoint():
+    client = TestClient(app)
+    response = client.get("/api/hot?platform=weibo&limit=5")
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["platform"] == "weibo"
+    assert body["items"]
+    assert body["items"][0]["platform"] == "weibo"
+
+
+def test_hot_topics_rejects_unknown_platform():
+    client = TestClient(app)
+    response = client.get("/api/hot?platform=unknown&limit=5")
+
+    assert response.status_code == 400
+    assert "Unsupported hot topic platform" in response.json()["detail"]
+
+
 def test_knowledge_rebuild():
     client = TestClient(app)
     response = client.post("/api/knowledge/rebuild")
@@ -231,7 +250,7 @@ def test_topic_asset_routing_api(monkeypatch):
         "/api/topic-assets",
         json={
             "canonical_title": "平台售后规则引争议",
-            "summary": "适合判断是否进入微博、知乎或视频产线。",
+            "summary": "适合判断是否进入微博、知乎、视频或公众号产线。",
             "source_platforms": ["weibo"],
             "hot_signals": {"weibo_score": 88, "zhihu_score": 76},
             "tags": ["consumer"],
@@ -247,7 +266,7 @@ def test_topic_asset_routing_api(monkeypatch):
     body = routing_response.json()
     assert body["topic_asset_id"] == asset["id"]
     assert body["llm_used"] is True
-    assert {item["target_platform"] for item in body["decisions"]} == {"weibo", "zhihu", "video"}
+    assert {item["target_platform"] for item in body["decisions"]} == {"weibo", "zhihu", "video", "wechat"}
 
 
 def test_create_and_update_draft(monkeypatch):

@@ -1366,7 +1366,7 @@ def build_zhihu_domain_context(item: dict) -> str:
 
 
 def topic_asset_payload_from_candidate(pool: dict, item: dict) -> dict:
-    source_platform = item.get("source") or pool.get("source") or "weibo"
+    source_platform = item.get("platform") or item.get("source") or pool.get("source") or "weibo"
     source_urls = [item["url"]] if item.get("url") else []
     tags = [item.get("category"), item.get("zhihu_recommended_domain")]
     return {
@@ -1382,9 +1382,11 @@ def topic_asset_payload_from_candidate(pool: dict, item: dict) -> dict:
         "source_urls": source_urls,
         "hot_signals": {
             "rank": item.get("rank"),
+            "original_rank": item.get("original_rank") or item.get("rank"),
             "hot_value": item.get("hot_value"),
             "category_label": item.get("category_label"),
             "label": item.get("label"),
+            "source": item.get("source"),
             "weibo_score": item.get("target_platform_scores", {}).get("weibo", item.get("score")),
             "zhihu_score": item.get("target_platform_scores", {}).get("zhihu"),
         },

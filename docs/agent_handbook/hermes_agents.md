@@ -109,6 +109,7 @@ configs/hermes.mcp.example.yaml
 - `save_draft`
 - `list_drafts`
 - `record_draft_feedback`
+- `summarize_draft_feedback`
 - `safety_check`
 - `send_review_message`
 
@@ -293,6 +294,26 @@ extract_style_memory
 - 不自动写入 RAG。
 - 只有用户明确说“沉淀为风格记忆”“入风格库”时，才进入 `extract_style_memory` / `ingest_style_memory` 流程。
 - 网页工作台后续也应复用同一个反馈服务，而不是另做一套反馈文件。
+
+### summarize_draft_feedback
+
+目标：把 `output/draft_feedback/feedback.jsonl` 的原始反馈提炼成可审核的长期记忆草案。
+
+流程：
+
+```text
+summarize_draft_feedback(use_llm=false, auto_ingest=false)
+-> 输出表达偏好、判断偏好、避雷点、事实核验规则
+-> 用户确认
+-> summarize_draft_feedback(auto_ingest=true)
+-> retrieve_knowledge 验证
+```
+
+要求：
+
+- 不把原始 JSON 逐条塞进 RAG。
+- 默认不使用 LLM，降低额度消耗。
+- 默认不入库，必须等用户确认后才写入 RAG。
 
 ## 验证清单
 

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class HotTopic(BaseModel):
     rank: int | None = None
+    original_rank: int | None = None
     keyword: str
     hot_value: str | None = None
     category_label: str | None = None
@@ -15,12 +16,13 @@ class HotTopic(BaseModel):
     controversy_score: float | None = None
     url: str | None = None
     label: str | None = None
+    platform: str = "manual"
     source: str = "manual"
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 TopicAssetStatus = Literal["observing", "candidate", "research_needed", "researched", "archived"]
-PlatformTarget = Literal["weibo", "zhihu", "video"]
+PlatformTarget = Literal["weibo", "zhihu", "video", "wechat"]
 PlatformRoutingDecisionType = Literal["recommended", "optional", "not_recommended"]
 
 
@@ -293,12 +295,14 @@ class TopicSelectionRequest(BaseModel):
     topics: list[HotTopic] = Field(default_factory=list)
     max_results: int = Field(default=5, ge=3, le=10)
     source_limit: int = Field(default=50, ge=1, le=50)
+    source_platform: str = "weibo"
     enrich_metrics: bool = False
     research_limit: int = Field(default=10, ge=1, le=10)
 
 
 class SelectedTopic(BaseModel):
     rank: int | None = None
+    original_rank: int | None = None
     keyword: str
     score: float
     category: str
@@ -314,6 +318,7 @@ class SelectedTopic(BaseModel):
     controversy_score: float | None = None
     label: str | None = None
     url: str | None = None
+    platform: str = "manual"
     source: str = "manual"
     target_platform_scores: dict[str, float] = Field(default_factory=dict)
     recommended_targets: list[str] = Field(default_factory=list)
@@ -505,8 +510,8 @@ class CandidateStatusUpdateRequest(BaseModel):
 
 
 DraftStatus = Literal["draft", "reviewed", "rejected", "published_manually"]
-DraftType = Literal["micro_comment", "zhihu_answer", "video_script"]
-DraftPlatform = Literal["weibo", "zhihu", "video", "other"]
+DraftType = Literal["micro_comment", "zhihu_answer", "video_script", "wechat_article"]
+DraftPlatform = Literal["weibo", "zhihu", "video", "wechat", "other"]
 
 
 class DraftCreateRequest(GenerateCommentRequest):

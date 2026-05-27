@@ -12,6 +12,7 @@ from app.hot_sources.mock import MockHotSearchProvider
 
 class VisibleCaptureHotSearchProvider(BaseHotSearchProvider):
     source = "weibo_visible_capture"
+    platform = "weibo"
 
     def __init__(
         self,
@@ -29,14 +30,16 @@ class VisibleCaptureHotSearchProvider(BaseHotSearchProvider):
             items = [
                 HotSearchItem(
                     rank=index + 1,
+                    original_rank=index + 1,
                     keyword=keyword,
                     label="visible",
+                    platform=self.platform,
                     source=self.source,
                     url=build_weibo_search_url(keyword),
                 )
                 for index, keyword in enumerate(keywords)
             ]
-            return HotSearchResponse(source=self.source, items=items)
+            return HotSearchResponse(source=self.source, platform=self.platform, platforms=[self.platform], items=items)
         except Exception as exc:
             fallback_response = self.fallback.fetch(limit=limit)
             fallback_response.source = self.source

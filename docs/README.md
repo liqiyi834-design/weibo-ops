@@ -22,6 +22,7 @@
 - `agent_handbook/platform_weibo.md`：微博产线。
 - `agent_handbook/platform_zhihu.md`：知乎产线。
 - `agent_handbook/platform_video.md`：视频创意产线。
+- `agent_handbook/platform_wechat.md`：微信公众号中长文产线。
 - `../deployment/linux/README.md`：Ubuntu 云服务器部署、systemd、Nginx 和 Hermes gateway/cron。
 
 ## 可复用资料

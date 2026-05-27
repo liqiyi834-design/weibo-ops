@@ -8,7 +8,7 @@ HotComment-AI 是面向少数自有/朋友账号的人机协同内容运营工�
 
 明确不做：
 
-- 自动发布微博、知乎回答或视频内容。
+- 自动发布微博、知乎回答、视频内容或公众号文章。
 - 自动评论、自动转发、自动点赞、自动关注、自动私信。
 - 批量互动、刷量、养号矩阵。
 - 规避平台风控或限制。
@@ -44,6 +44,7 @@ docs/agent_handbook/deployment.md
 docs/agent_handbook/platform_weibo.md
 docs/agent_handbook/platform_zhihu.md
 docs/agent_handbook/platform_video.md
+docs/agent_handbook/platform_wechat.md
 ```
 
 如果根目录总纲与其他文档冲突，以根目录总纲为准，再同步更新 docs 和本文件。
@@ -54,17 +55,20 @@ docs/agent_handbook/platform_video.md
 
 - FastAPI 核心服务与生成链路。
 - 微博热搜 Cookie 抓取、登录失效识别、fallback 和热度字段清洗。
+- 多平台 HotTopicProvider MVP：已提供统一 `GET /api/hot` 和 `HotSearchService.get_hot_topics(platform=...)`，微博已迁移为 `weibo` provider 路径，并新增 `baidu` 公开热榜 provider。
 - 热搜选题推荐与微博候选池 MVP。
 - TopicAsset 综合池 MVP，已接入 LLM 平台分发建议。
 - Streamlit 工作台第一版。
 - 草稿箱第一版。
 - 本地 RAG 与人工背景资料入库。
+- 背景资料搜索/入库 MVP：Exa、微博智搜、候选池重排、人工勾选入库和生成时复用临时背景已接入。
 - 风格记忆库 MVP：工作台/API/MCP 支持把公开或授权文本提炼成写法规则并入库 RAG。
 - Hermes 草稿反馈记录 MVP：Telegram/Hermes 可记录保留、重写、废弃、太像 AI、太硬、角度对/错等待审核反馈。
 - MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_current_research`、`send_review_message`、`record_draft_feedback`。
-- 已确认 Hermes agents 支持 MCP，可作为后续自动化编排器接入现有 MCP 工具。
+- Hermes agents / MCP 自动化编排基本完成：已提供启动脚本、配置样例、工作流 prompt、分段推送、草稿反馈和受控 RAG 入库入口。
 - 轻量多账号配置与表达风格配置。
 - 知乎回答草稿 MVP 与知乎垂直领域适配。
+- 公众号产线已纳入分发建议与文档设计：定位为中等长度文章，重点服务人文、情感、多账号、多风格和栏目化表达。
 
 最新验证：
 
@@ -85,10 +89,11 @@ python -m pytest tests -q -p no:cacheprovider
 当前最值得推进的是：
 
 1. P2：新增独立知乎问题池，停止把微博候选池长期兼作知乎候选池。
-2. P3：设计背景资料搜索/入库的人工审查流程，暂不做全自动网页抓取。
-3. P4：继续抽象多平台 HotTopicProvider，优先选择公开、低风险来源。
-4. P5：优先接入 Hermes agents / MCP 自动化编排，覆盖每日热点候选、草稿生成和审核摘要；只生成候选或草稿，不自动发布。
+2. P4 后续：继续接入更多公开、低风险热榜来源，并设计跨平台同题聚合。
+3. P6B：设计并实现公众号文章池、栏目配置和中等长度文章草稿生成器。
+4. P7A：升级 Hybrid RAG + Rerank，减少无关写作公式召回，提高事实资料、风格规则和安全边界匹配精度。
 5. P6：继续细化视频创意池，但不急于实现生成链路。
+6. P1/P3/P5 收尾：分发历史、背景资料展示、Hermes cron 稳定性、日志和节流策略。
 
 完整待办见 [backlog.md](docs/agent_handbook/backlog.md)。
 
@@ -103,11 +108,11 @@ python -m pytest tests -q -p no:cacheprovider
 -> 人工选择 selected/researched
 -> 可加入综合池 TopicAsset
 -> 人工补充背景资料并入库 RAG
--> 生成微博短评或知乎回答草稿
+-> 生成微博短评、知乎回答或公众号文章草稿
 -> 草稿箱人工编辑、审核、发布记录和复盘
 ```
 
-综合池不是平台池。微博、知乎、视频的候选逻辑应逐步拆开。详情见 [workflow.md](docs/agent_handbook/workflow.md)。
+综合池不是平台池。微博、知乎、视频、公众号的候选逻辑应逐步拆开。详情见 [workflow.md](docs/agent_handbook/workflow.md)。
 
 Hermes agents 定位为自动化编排层，只调用 MCP 或 FastAPI 完成候选、检索、审查、资料入库、草稿和摘要任务，不直接操作平台账号。
 
@@ -124,6 +129,7 @@ Hermes agents 定位为自动化编排层，只调用 MCP 或 FastAPI 完成候�
 - 高风险话题必须降低情绪强度。
 - 所有生成结果默认进入草稿或返回待审核，不自动发布。
 - 多账号只用于少数自有/朋友账号的差异化配置，不用于矩阵号、养号或批量操控。
+- 测试默认只跑与本次改动相关的定向测试；只有大范围重构、发布前验证、依赖升级或用户明确要求时，才跑全量 `python -m pytest tests -q -p no:cacheprovider`。
 
 ## 常用命令
 
@@ -204,6 +210,8 @@ record_draft_feedback
 
 `record_draft_feedback` 只记录待审核反馈，不直接改写人格规则或自动入库风格记忆。
 
+`summarize_draft_feedback` 把原始反馈 JSONL 提炼成可审核长期记忆草案；默认不使用 LLM、不入库，只有明确确认后才 `auto_ingest=true` 写入 RAG。
+
 运行测试：
 
 ```powershell
@@ -222,7 +230,7 @@ python -m pytest tests -q -p no:cacheprovider
 - 坑点与经验：`pitfalls.md`
 - 部署方式：`deployment.md`
 - Linux 云服务器部署：`deployment/linux/README.md`
-- 平台产线：`platform_weibo.md`、`platform_zhihu.md`、`platform_video.md`
+- 平台产线：`platform_weibo.md`、`platform_zhihu.md`、`platform_video.md`、`platform_wechat.md`
 
 不要把 API key、Cookie、token、真实账号隐私或可用于绕过平台限制的操作指南写入任何文档。
 

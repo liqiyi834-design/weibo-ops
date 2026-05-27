@@ -99,6 +99,15 @@ class MockLLMClient(BaseLLMClient):
                         "suggested_angle": "暂不作为视频优先选题。",
                         "required_research": [],
                     },
+                    {
+                        "target_platform": "wechat",
+                        "fit_score": 78,
+                        "decision": "recommended",
+                        "reasons": ["适合扩展成中等长度文章，能承载人文和情感观察。"],
+                        "blockers": ["需要补足案例、事实来源和账号栏目定位"],
+                        "suggested_angle": "从具体生活场景切入，展开关系、情绪和价值判断，最后克制收束。",
+                        "required_research": ["补充可引用来源", "确认目标账号风格和栏目"],
+                    },
                 ]
             }
         if "topicrerankschema" in lowered:

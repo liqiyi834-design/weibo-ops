@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.schemas.comment import KnowledgeIngestResponse
+
 
 DraftFeedbackAction = Literal[
     "keep",
@@ -52,3 +54,34 @@ class DraftFeedbackResponse(BaseModel):
     success: bool = True
     record: DraftFeedbackRecord
     path: str
+
+
+class FeedbackMemoryDraft(BaseModel):
+    title: str
+    account_id: str = "today_direct"
+    source_count: int = 0
+    keep_patterns: list[str] = Field(default_factory=list)
+    rewrite_patterns: list[str] = Field(default_factory=list)
+    discard_patterns: list[str] = Field(default_factory=list)
+    style_rules: list[str] = Field(default_factory=list)
+    judgment_rules: list[str] = Field(default_factory=list)
+    avoid_points: list[str] = Field(default_factory=list)
+    fact_check_rules: list[str] = Field(default_factory=list)
+    example_feedback: list[str] = Field(default_factory=list)
+    markdown: str = ""
+
+
+class FeedbackMemorySummarizeRequest(BaseModel):
+    limit: int = Field(default=30, ge=1, le=200)
+    account_id: str | None = "today_direct"
+    status: Literal["pending_review", "reviewed", "ignored"] | None = "pending_review"
+    use_llm: bool = False
+    auto_ingest: bool = False
+    rebuild_index: bool = True
+    operator_note: str | None = None
+
+
+class FeedbackMemorySummarizeResponse(BaseModel):
+    success: bool = True
+    draft: FeedbackMemoryDraft
+    ingested: KnowledgeIngestResponse | None = None

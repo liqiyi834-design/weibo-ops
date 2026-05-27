@@ -60,7 +60,7 @@ def test_llm_platform_router_returns_human_review_decisions():
 
     assert result.topic_asset_id == asset.id
     assert result.llm_used is True
-    assert {item.target_platform for item in result.decisions} == {"weibo", "zhihu", "video"}
+    assert {item.target_platform for item in result.decisions} == {"weibo", "zhihu", "video", "wechat"}
     assert result.decisions[0].decision in {"recommended", "optional", "not_recommended"}
     assert all(item.suggested_angle for item in result.decisions)
 
@@ -86,3 +86,4 @@ def test_llm_platform_router_keeps_high_risk_constraints():
     assert by_platform["weibo"].decision != "recommended"
     assert by_platform["video"].fit_score <= 60
     assert by_platform["video"].decision != "recommended"
+    assert "wechat" in by_platform

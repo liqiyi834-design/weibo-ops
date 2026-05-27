@@ -14,7 +14,7 @@ from app.schemas.comment import (
     StyleMemoryIngestRequest,
     TopicRerankCandidate,
 )
-from app.schemas.feedback import DraftFeedbackRequest
+from app.schemas.feedback import DraftFeedbackRequest, FeedbackMemorySummarizeRequest
 from app.schemas.notification import ReviewMessageRequest
 from app.services.draft_feedback_service import DraftFeedbackService
 from app.services.draft_service import DraftService
@@ -132,6 +132,33 @@ def record_draft_feedback_tool(
     )
     active_service = service or DraftFeedbackService()
     return active_service.record(request).model_dump()
+
+
+def summarize_draft_feedback_tool(
+    limit: int = 30,
+    account_id: str | None = "today_direct",
+    status: str | None = "pending_review",
+    use_llm: bool = False,
+    auto_ingest: bool = False,
+    rebuild_index: bool = True,
+    operator_note: str | None = None,
+    settings: Settings | None = None,
+    llm: BaseLLMClient | None = None,
+    service: DraftFeedbackService | None = None,
+) -> dict:
+    request = FeedbackMemorySummarizeRequest(
+        limit=limit,
+        account_id=account_id,
+        status=status,
+        use_llm=use_llm,
+        auto_ingest=auto_ingest,
+        rebuild_index=rebuild_index,
+        operator_note=operator_note,
+    )
+    active_settings = settings or get_settings()
+    active_llm = llm or (build_llm_client(active_settings) if use_llm else None)
+    active_service = service or DraftFeedbackService(settings=active_settings, llm=active_llm)
+    return active_service.summarize_memory(request).model_dump()
 
 
 def update_draft_tool(
@@ -468,9 +495,9 @@ def send_review_message_tool(
     return sender.send_review_message(request).model_dump()
 
 
-def get_hot_topics_tool(limit: int = 20, settings: Settings | None = None) -> dict:
+def get_hot_topics_tool(limit: int = 20, platform: str = "weibo", settings: Settings | None = None) -> dict:
     active_settings = settings or get_settings()
-    response = HotSearchService(active_settings).get_weibo_hot_topics(limit=limit)
+    response = HotSearchService(active_settings).get_hot_topics(platform=platform, limit=limit)
     return response.model_dump()
 
 
@@ -484,6 +511,7 @@ def select_comment_topics_tool(
     topics: list[dict] | None = None,
     max_results: int = 5,
     source_limit: int = 50,
+    source_platform: str = "weibo",
     enrich_metrics: bool = False,
     research_limit: int = 10,
     settings: Settings | None = None,
@@ -492,15 +520,17 @@ def select_comment_topics_tool(
     if topics:
         hot_topics = [HotTopic(**topic) for topic in topics]
     else:
-        response = HotSearchService(active_settings).get_weibo_hot_topics(limit=source_limit)
+        response = HotSearchService(active_settings).get_hot_topics(platform=source_platform, limit=source_limit)
         hot_topics = [
             HotTopic(
                 rank=item.rank,
+                original_rank=item.original_rank or item.rank,
                 keyword=item.keyword,
                 hot_value=item.hot_value,
                 category_label=item.category_label,
                 url=item.url,
                 label=item.label,
+                platform=item.platform,
                 source=item.source,
                 timestamp=item.timestamp,
             )

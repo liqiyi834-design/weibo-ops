@@ -15,11 +15,13 @@
 
 热搜来源：
 
+- 统一入口：`HotSearchService.get_hot_topics(platform="weibo")`
 - 实时热搜：`HotSearchService.get_weibo_hot_topics()`
 - 文娱榜：`HotSearchService.get_weibo_ent_topics()`
 
 API：
 
+- `GET /api/hot?platform=weibo`
 - `GET /api/hot/weibo`
 - `POST /api/topics/select`
 - `POST /api/topic-candidates/pools`
@@ -66,4 +68,4 @@ MCP：
 - 根据运营策略决定是否过滤置顶、政务、低评论空间话题。
 - 引入 LLM 二次评审，让推荐理由更像编辑判断。
 - 支持从综合池分发回微博候选池。
-- 多平台同题聚合后，把跨平台讨论广度作为参考因素。
+- 多平台同题聚合后，把百度等公开热榜的跨平台讨论广度作为参考因素。

@@ -1,6 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
 
+from app.hot_sources.baidu import BaiduTopHotSearchProvider
 from app.hot_sources.mock import MockHotSearchProvider
 from app.hot_sources.visible_capture import VisibleCaptureHotSearchProvider
 from app.hot_sources.weibo_cookie import WeiboCookieHotSearchProvider
@@ -68,6 +69,29 @@ def test_weibo_cookie_provider_falls_back_without_cookie():
     assert response.fallback_used is True
     assert len(response.items) == 2
     assert "WEIBO_COOKIE" in (response.error or "")
+
+
+def test_baidu_top_provider_parses_json_payload():
+    html = r'''
+    <script>
+      window.__DATA__ = {
+        "cards":[
+          {"content":[
+            {"word":"百度热榜话题一","index":"1","hotScore":"998877","rawUrl":"https:\/\/example.com\/a"},
+            {"word":"百度热榜话题二","index":"2","hotScore":"123456"}
+          ]}
+        ]
+      }
+    </script>
+    '''
+
+    items = BaiduTopHotSearchProvider()._parse_items(html, limit=2)
+
+    assert [item.keyword for item in items] == ["百度热榜话题一", "百度热榜话题二"]
+    assert items[0].platform == "baidu"
+    assert items[0].original_rank == 1
+    assert items[0].hot_value == "998877"
+    assert items[0].url == "https://example.com/a"
 
 
 def test_weibo_cookie_provider_detects_login_redirect():

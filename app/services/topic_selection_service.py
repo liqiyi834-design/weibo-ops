@@ -36,6 +36,7 @@ class TopicSelectionService:
         recommended_targets = self._recommended_targets(score, zhihu_fit.score, risk_level)
         return SelectedTopic(
             rank=topic.rank,
+            original_rank=getattr(topic, "original_rank", None) or topic.rank,
             keyword=topic.keyword,
             score=round(score, 2),
             category=classification.category,
@@ -51,6 +52,7 @@ class TopicSelectionService:
             controversy_score=getattr(topic, "controversy_score", None),
             label=getattr(topic, "label", None),
             url=topic.url,
+            platform=getattr(topic, "platform", None) or "manual",
             source=topic.source,
             target_platform_scores={
                 "weibo": round(score, 2),

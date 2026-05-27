@@ -60,6 +60,7 @@ mcp_servers:
         - save_draft
         - list_drafts
         - record_draft_feedback
+        - summarize_draft_feedback
         - safety_check
         - send_review_message
 "@

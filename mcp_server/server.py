@@ -24,6 +24,7 @@ from mcp_server.tools import (
     select_comment_topics_tool,
     send_review_message_tool,
     save_draft_tool,
+    summarize_draft_feedback_tool,
     update_draft_tool,
 )
 
@@ -31,9 +32,9 @@ mcp = FastMCP("weibo-ops-hotcomment")
 
 
 @mcp.tool
-def get_hot_topics(limit: int = 20) -> dict:
-    """Fetch current Weibo hot topics, falling back to mock topics if Weibo is unavailable."""
-    return get_hot_topics_tool(limit=limit)
+def get_hot_topics(limit: int = 20, platform: str = "weibo") -> dict:
+    """Fetch current hot topics by platform, falling back to mock topics if unavailable."""
+    return get_hot_topics_tool(limit=limit, platform=platform)
 
 
 @mcp.tool
@@ -41,6 +42,7 @@ def select_comment_topics(
     topics: list[dict] | None = None,
     max_results: int = 5,
     source_limit: int = 50,
+    source_platform: str = "weibo",
     enrich_metrics: bool = False,
     research_limit: int = 10,
 ) -> dict:
@@ -49,6 +51,7 @@ def select_comment_topics(
         topics=topics,
         max_results=max_results,
         source_limit=source_limit,
+        source_platform=source_platform,
         enrich_metrics=enrich_metrics,
         research_limit=research_limit,
     )
@@ -149,6 +152,28 @@ def record_draft_feedback(
         reviewer=reviewer,
         should_extract_style_memory=should_extract_style_memory,
         metadata=metadata,
+    )
+
+
+@mcp.tool
+def summarize_draft_feedback(
+    limit: int = 30,
+    account_id: str | None = "today_direct",
+    status: str | None = "pending_review",
+    use_llm: bool = False,
+    auto_ingest: bool = False,
+    rebuild_index: bool = True,
+    operator_note: str | None = None,
+) -> dict:
+    """Summarize raw draft feedback into a reviewable memory draft; optionally ingest after approval."""
+    return summarize_draft_feedback_tool(
+        limit=limit,
+        account_id=account_id,
+        status=status,
+        use_llm=use_llm,
+        auto_ingest=auto_ingest,
+        rebuild_index=rebuild_index,
+        operator_note=operator_note,
     )
 
 

@@ -25,6 +25,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 
 - `GET /`
 - `GET /health`
+- `GET /api/hot`
 - `GET /api/hot/weibo`
 - `POST /api/comment/generate`
 - `GET /api/comment/personas`
@@ -56,12 +57,16 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 
 已实现：
 
+- 统一 `HotTopicProvider` / `BaseHotSearchProvider` provider 接口。
+- `HotSearchService.get_hot_topics(platform=..., limit=...)` 统一热榜入口，目前已接 `weibo` 和 `baidu`，并支持 `platform=all` 聚合。
+- `GET /api/hot?platform=weibo|baidu|all`，同时保留旧入口 `GET /api/hot/weibo`。
 - Cookie 抓取微博实时热搜。
 - Cookie 失效或登录跳转识别。
 - fallback 到可见采样或 mock。
 - 文娱榜 `get_weibo_ent_topics()`。
 - `category_label` 字段，保存 `电影`、`综艺`、`剧集` 等分类。
 - `hot_value` 只保留纯数字热度，避免 `综艺 126022` 混入评分和展示。
+- 热榜 item、选题和候选池条目保留 `platform`、`source`、`url`、`rank`、`original_rank` 和 `hot_value`，为后续多平台聚合留出字段。
 
 ### 候选池与选题推荐
 
@@ -140,6 +145,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `list_drafts`
 - `update_draft`
 - `record_draft_feedback`
+- `summarize_draft_feedback`
 - `rebuild_knowledge`
 - `search_knowledge`
 - `retrieve_knowledge`
@@ -158,6 +164,8 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 `send_review_message` 是 Hermes 分段推送工具，只发送到已配置的 home channel，用于候选摘要、话题待过目和完成摘要；不允许 Hermes 指定任意 Telegram ID。
 
 `record_draft_feedback` 是 Hermes 草稿反馈入口，用于记录“保留、重写、废弃、太像 AI、太硬、角度对/错”等人工反馈，默认状态为待审核沉淀。
+
+`summarize_draft_feedback` 负责把原始反馈 JSONL 提炼成可审核长期记忆草案；默认不使用 LLM、不入库，确认后才写入 RAG。
 
 启动：
 

@@ -28,7 +28,7 @@
 TopicAsset
 -> 规则层给出基础分和硬约束
 -> LLM 做编辑判断与平台适配解释
--> 输出微博 / 知乎 / 视频三类平台建议
+-> 输出微博 / 知乎 / 视频 / 公众号四类平台建议
 -> 人工确认是否进入具体平台池
 ```
 
@@ -47,7 +47,7 @@ TopicAsset
 
 后续可继续：
 
-- 把“人工确认加入微博池/知乎问题池/视频创意池”做成明确按钮。
+- 把“人工确认加入微博池/知乎问题池/视频创意池/公众号文章池”做成明确按钮。
 - 记录每次分发建议的历史结果。
 - 将 LLM 分发建议接入 MCP。
 
@@ -81,9 +81,19 @@ TopicAsset
 - 资料支撑。
 - 回答空间。
 
-## P3：知识库自动学习与背景资料搜索
+## P3：知识库自动学习与背景资料搜索（MVP 已完成）
 
-当前已完成人工入库，并在工作台补了 Exa 本轮检索结果的人工勾选入库按钮。后续可继续做更完整的半自动搜索：
+当前已完成背景资料搜索和人工审查入库的主链路：
+
+- Exa 公开资料检索。
+- 微博智搜站内背景采集。
+- 候选池生成时可选“微博智搜 + Exa + `TopicRerankService`”背景检索重排。
+- 工作台/API/MCP 支持把本轮公开资料作为临时背景使用。
+- 工作台支持人工勾选 Exa/微博智搜资料后入库 RAG。
+- 生成微博草稿或知乎回答时可复用候选池保存的背景摘要、来源和待核验点。
+- MCP 已提供 `research_topic_sources`、`research_weibo_aisearch`、`rerank_topics_with_research`、`ingest_current_research` 等入口。
+
+当前稳定原则：
 
 ```text
 选题确定
@@ -94,12 +104,12 @@ TopicAsset
 -> 入库 RAG
 ```
 
-建议新增：
+后续只作为体验增强继续推进：
 
-- `app/services/research_service.py`
-- `POST /api/research/topic`
-- MCP 工具 `research_topic`
-- MCP 工具 `ingest_topic_research`
+- 继续优化生成草稿时的候选背景摘要截断、来源展示和待核验提示。
+- 视需要统一早期命名，把 `research_topic_sources` / `ingest_current_research` 包装成更泛化的 `research_topic` / `ingest_topic_research`。
+- 优化资料卡的可信度、时间戳、来源类型和人工备注展示。
+- 保持默认不自动入库 RAG；只有用户明确确认或授权后才入库。
 
 边界：
 
@@ -152,58 +162,64 @@ url = f"https://s.weibo.com/aisearch?q={quote(f'#{topic}#')}&Refer=weibo_aisearc
 -> 人工确认后才可入库 RAG
 ```
 
-后续待做：
+后续可继续：
 
-- 生成候选池时把微博智搜 sources 与 Exa sources 合并后进入 `TopicRerankService`
-- 支持将用户确认后的智搜摘要整理入库 RAG
+- 优化智搜摘要截断、来源类型展示和待核验提示。
+- 持续保持用户确认后才整理入库 RAG。
 
-## P4：多平台 HotTopicProvider
+## P4：多平台 HotTopicProvider（MVP 已接入）
 
-目标：统一不同平台热榜读取结果。
+目标：统一不同平台热榜读取结果。当前已完成第一版 provider 抽象和统一入口，微博热榜已迁移到 `weibo` provider 路径，并新增公开低风险的 `baidu` provider。
 
-待办：
+已实现：
 
-- 抽象 `HotTopicProvider` 接口。
-- 将现有微博实现迁移为 `weibo` provider。
-- API 支持 `platform=weibo`、`platform=all` 或指定多个平台。
-- 候选池保留来源平台、来源链接、原始排名和平台热度字段。
-- 第二个平台优先公开、低风险、无需账号操作的来源，例如百度热搜、知乎热榜、B 站热榜。
+- `HotTopicProvider` / `BaseHotSearchProvider` 统一 provider 接口。
+- `HotSearchService.get_hot_topics(platform=..., limit=...)` 统一入口。
+- `GET /api/hot?platform=weibo|baidu|all` 统一热榜 API。
+- 保留兼容入口 `GET /api/hot/weibo`。
+- MCP `get_hot_topics` / `select_comment_topics` 支持 `platform` / `source_platform` 参数，默认仍为 `weibo`。
+- 热榜 item、选题、候选池条目保留 `platform`、`source`、`url`、`rank`、`original_rank` 和 `hot_value`。
+- `platform=all` 当前聚合 `weibo` 与 `baidu`。
+
+后续待办：
+
+- 继续接入更多公开、低风险、无需账号操作的来源，例如知乎热榜、B 站热榜。
 - 支持跨平台同题聚合。
 
-## P5：Hermes agents / MCP 自动化编排
+## P5：Hermes agents / MCP 自动化编排（基本完成）
 
-Hermes agents 是后续自动化流程的重点编排层。接入方式优先使用现有 MCP Server；如果 Hermes 运行环境不方便启动本地 MCP，再用 FastAPI 作为 HTTP 适配层。
+Hermes agents 已基本接入为自动化编排层。接入方式优先使用现有 MCP Server；如果 Hermes 运行环境不方便启动本地 MCP，再用 FastAPI 作为 HTTP 适配层。
 
 自动化任务只生成候选、检索结果、审查结果、草稿或摘要，不自动发布、不自动互动、不直接操作微博/知乎/视频平台账号。
 
-建议首批 Hermes 工作流：
+已具备：
 
-- `daily_hot_topics_review`：定时读取热搜，筛选适合人工审核的话题，生成候选池摘要。
-- `draft_generation_queue`：从已选候选生成微博短评或知乎回答草稿，保存到草稿箱。
-- `safety_review_digest`：汇总高风险话题、blocked 草稿、安全审查问题和待人工处理项。
-- `knowledge_research_assist`：为人工选题生成公开资料搜索清单和入库候选，但入库前必须人工确认。
+- Hermes MCP 启动脚本：`tools/Start-HermesMcp.ps1`。
+- Linux Hermes MCP 启动脚本：`tools/start_hermes_mcp.sh`。
+- 本机配置片段生成：`tools/New-HermesMcpConfig.ps1`。
+- Hermes 前置检查：`tools/Test-HermesProjectPrereqs.ps1`。
+- Hermes workflow prompt：`configs/hermes.workflows/`。
+- Hermes skill：`configs/hermes.skills/hotcomment-pipeline/SKILL.md`。
+- 本地工作流调用：`tools/Invoke-HermesWorkflow.ps1`。
+- 分段推送工具：`send_review_message`。
+- 草稿反馈记录工具：`record_draft_feedback`。
+- Exa/RAG 受控入库入口：`ingest_current_research`。
 
-Hermes 可调用的现有 MCP 工具：
+已定义/接入的主要工作流：
 
-- `get_hot_topics`
-- `select_comment_topics`
-- `classify_topic`
-- `retrieve_knowledge`
-- `generate_comment`
-- `save_draft`
-- `list_drafts`
-- `safety_check`
+- `daily_hot_topics_review`：定时读取热搜，筛选适合人工审核的话题，生成候选摘要。
+- `auto_candidate_to_review_text`：端到端生成待过目文本。
+- `style_memory_ingest`：提炼并在确认后写入风格记忆。
+- `draft_feedback_review`：记录保留、重写、废弃、太像 AI、太硬、角度对/错等反馈。
+- `ingest_current_research_to_rag`：在用户确认编号或明确授权后，把公开资料入库 RAG。
 
-待实现：
+后续只作为运行稳定性和体验增强继续推进：
 
-- Hermes MCP 启动脚本或配置样例。
-- Hermes 工作流提示词与工具白名单。
-- 自动化运行日志与失败记录。
-- 每日任务生成数量上限与节流策略。
-- `fetch_hot_topics_job`
-- `classify_hot_topics_job`
-- `generate_drafts_job`
-- `daily_digest_job`
+- 继续固化服务器 cron job，例如每日候选、草稿生成、审核摘要。
+- 优化自动化运行日志、失败记录和 Telegram 投递错误定位。
+- 细化每日任务生成数量上限与节流策略。
+- 持续收紧工具白名单和输出长度，避免把 prompt、日志或敏感配置发到 Telegram。
+- 视需要补充 `fetch_hot_topics_job`、`classify_hot_topics_job`、`generate_drafts_job`、`daily_digest_job` 等命名化 job。
 
 边界：
 
@@ -242,6 +258,47 @@ Hermes 可调用的现有 MCP 工具：
 - 不自动发布视频。
 - 不自动批量搬运素材。
 - 不生成仿冒真人、侵犯肖像或误导性真实事件视频。
+
+## P6B：微信公众号中长文产线
+
+公众号产线用于中等长度文章，重点服务人文、情感、关系、生活观察和具有账号特色的栏目化表达。
+
+建议新增：
+
+- `WeChatArticlePool`
+- `WeChatArticleCandidate`
+- `WeChatColumnProfile`
+- `WeChatArticleDraft`
+
+第一版流程：
+
+```text
+TopicAsset / 人工选题
+-> 公众号适配评分
+-> 公众号文章池
+-> 人工选择账号、栏目和风格
+-> 补充资料、案例和观察
+-> 生成大纲
+-> 人工确认大纲
+-> 生成中等长度文章草稿
+-> 草稿箱人工编辑、审核、发布记录
+```
+
+评分重点：
+
+- 账号定位和栏目适配。
+- 人文/情感承载力。
+- 具体场景、人物处境和生活经验。
+- 是否有独特观察，而不是公共观点复述。
+- 资料和案例是否足够支撑 1200-2500 字文章。
+- 风险等级和事实可核验程度。
+
+边界：
+
+- 不自动发布公众号文章。
+- 不自动群发、留言、私信或涨粉。
+- 不批量搬运公号文章，不复刻外部作者。
+- 多账号只用于少数自有/朋友账号的差异化配置。
 
 ## P7：RAG 升级
 
