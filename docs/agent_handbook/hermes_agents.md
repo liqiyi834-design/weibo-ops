@@ -108,6 +108,7 @@ configs/hermes.mcp.example.yaml
 - `generate_comment`
 - `save_draft`
 - `list_drafts`
+- `record_draft_feedback`
 - `safety_check`
 - `send_review_message`
 
@@ -272,6 +273,26 @@ extract_style_memory
 - 提炼 hook、句式节奏、论证结构、修辞、适用话题和禁用点。
 - 不保存大段原文，不要求模型模仿某个博主本人。
 - 外部公开博主默认 `permission_level=public_reference` 且 `needs_review=true`。
+
+### draft_feedback_review
+
+目标：把 Telegram/Hermes 里的人工草稿反馈记录成待审核反馈，不直接改人格规则。
+
+流程：
+
+```text
+用户反馈“保留/重写/废弃/太像AI/太硬/角度对”
+-> record_draft_feedback
+-> 写入 output/draft_feedback/feedback.jsonl
+-> 后续人工或单独工作流决定是否提炼为风格记忆
+```
+
+要求：
+
+- 默认只记录反馈，状态为 `pending_review`。
+- 不自动写入 RAG。
+- 只有用户明确说“沉淀为风格记忆”“入风格库”时，才进入 `extract_style_memory` / `ingest_style_memory` 流程。
+- 网页工作台后续也应复用同一个反馈服务，而不是另做一套反馈文件。
 
 ## 验证清单
 

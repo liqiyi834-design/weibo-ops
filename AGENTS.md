@@ -60,7 +60,8 @@ docs/agent_handbook/platform_video.md
 - 草稿箱第一版。
 - 本地 RAG 与人工背景资料入库。
 - 风格记忆库 MVP：工作台/API/MCP 支持把公开或授权文本提炼成写法规则并入库 RAG。
-- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_current_research`、`send_review_message`。
+- Hermes 草稿反馈记录 MVP：Telegram/Hermes 可记录保留、重写、废弃、太像 AI、太硬、角度对/错等待审核反馈。
+- MCP 工具服务，已补齐 `classify_topic`、`retrieve_knowledge`、`safety_check`、`ingest_knowledge`、`ingest_current_research`、`send_review_message`、`record_draft_feedback`。
 - 已确认 Hermes agents 支持 MCP，可作为后续自动化编排器接入现有 MCP 工具。
 - 轻量多账号配置与表达风格配置。
 - 知乎回答草稿 MVP 与知乎垂直领域适配。
@@ -74,7 +75,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前结果：
 
 ```text
-94 passed
+97 passed
 ```
 
 详情见 [current_status.md](docs/agent_handbook/current_status.md)。
@@ -186,13 +187,22 @@ bash tools/start_hermes_mcp.sh --python /opt/weibo-ops/.venv/bin/python
 .\tools\Invoke-HermesWorkflow.ps1 -Workflow style_memory_ingest
 ```
 
+运行 Hermes 草稿反馈记录：
+
+```powershell
+.\tools\Invoke-HermesWorkflow.ps1 -Workflow draft_feedback_review
+```
+
 Hermes 分段推送工具：
 
 ```text
 send_review_message
+record_draft_feedback
 ```
 
-该工具只发送到已配置的 home channel，用于候选摘要、话题待过目和完成摘要；不得让 Hermes 指定任意收件人或执行平台互动。
+`send_review_message` 只发送到已配置的 home channel，用于候选摘要、话题待过目和完成摘要；不得让 Hermes 指定任意收件人或执行平台互动。
+
+`record_draft_feedback` 只记录待审核反馈，不直接改写人格规则或自动入库风格记忆。
 
 运行测试：
 

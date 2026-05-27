@@ -125,6 +125,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - 工作台支持把 Exa 检索到的本轮公开资料转成资料卡，人工选择后入库。
 - 候选池背景检索结果默认作为临时上下文，生成草稿时自动复用；长期入库仍需人工勾选或明确授权。
 - 风格记忆库写入 `app/knowledge/style_memory/`，用于长期表达风格召回。
+- 草稿反馈记录写入 `output/draft_feedback/feedback.jsonl`，作为待审核反馈，不自动改写人格或风格 RAG。
 - RAG 递归索引 `app/knowledge/**/*.md`。
 
 ### MCP
@@ -138,6 +139,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `save_draft`
 - `list_drafts`
 - `update_draft`
+- `record_draft_feedback`
 - `rebuild_knowledge`
 - `search_knowledge`
 - `retrieve_knowledge`
@@ -154,6 +156,8 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `send_review_message`
 
 `send_review_message` 是 Hermes 分段推送工具，只发送到已配置的 home channel，用于候选摘要、话题待过目和完成摘要；不允许 Hermes 指定任意 Telegram ID。
+
+`record_draft_feedback` 是 Hermes 草稿反馈入口，用于记录“保留、重写、废弃、太像 AI、太硬、角度对/错”等人工反馈，默认状态为待审核沉淀。
 
 启动：
 
@@ -217,5 +221,5 @@ python -m pytest tests -q -p no:cacheprovider
 结果：
 
 ```text
-94 passed
+97 passed
 ```

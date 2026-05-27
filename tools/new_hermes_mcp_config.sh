@@ -72,7 +72,9 @@ mcp_servers:
         - generate_comment
         - save_draft
         - list_drafts
+        - record_draft_feedback
         - safety_check
+        - send_review_message
 EOF
 )"
 

@@ -14,7 +14,9 @@ from app.schemas.comment import (
     StyleMemoryIngestRequest,
     TopicRerankCandidate,
 )
+from app.schemas.feedback import DraftFeedbackRequest
 from app.schemas.notification import ReviewMessageRequest
+from app.services.draft_feedback_service import DraftFeedbackService
 from app.services.draft_service import DraftService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_context_service import GenerationContextService
@@ -99,6 +101,37 @@ def save_draft_tool(
 
 def list_drafts_tool() -> list[dict]:
     return [draft.model_dump() for draft in DraftService().list_drafts()]
+
+
+def record_draft_feedback_tool(
+    comment: str,
+    topic: str | None = None,
+    draft_id: str | None = None,
+    action: str = "style_note",
+    source: str = "hermes",
+    account_id: str = "today_direct",
+    style: str | None = None,
+    message_ref: str | None = None,
+    reviewer: str | None = None,
+    should_extract_style_memory: bool = False,
+    metadata: dict | None = None,
+    service: DraftFeedbackService | None = None,
+) -> dict:
+    request = DraftFeedbackRequest(
+        topic=topic,
+        draft_id=draft_id,
+        action=action,
+        comment=comment,
+        source=source,
+        account_id=account_id,
+        style=style,
+        message_ref=message_ref,
+        reviewer=reviewer,
+        should_extract_style_memory=should_extract_style_memory,
+        metadata=metadata or {},
+    )
+    active_service = service or DraftFeedbackService()
+    return active_service.record(request).model_dump()
 
 
 def update_draft_tool(

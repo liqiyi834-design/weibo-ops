@@ -13,6 +13,7 @@ from mcp_server.tools import (
     ingest_knowledge_tool,
     ingest_style_memory_tool,
     list_drafts_tool,
+    record_draft_feedback_tool,
     rebuild_knowledge_tool,
     rerank_topics_with_research_tool,
     research_weibo_aisearch_tool,
@@ -119,6 +120,36 @@ def save_draft(
 def list_drafts() -> list[dict]:
     """List saved reviewable drafts."""
     return list_drafts_tool()
+
+
+@mcp.tool
+def record_draft_feedback(
+    comment: str,
+    topic: str | None = None,
+    draft_id: str | None = None,
+    action: str = "style_note",
+    source: str = "hermes",
+    account_id: str = "today_direct",
+    style: str | None = None,
+    message_ref: str | None = None,
+    reviewer: str | None = None,
+    should_extract_style_memory: bool = False,
+    metadata: dict | None = None,
+) -> dict:
+    """Record human review feedback for a draft as a pending review item."""
+    return record_draft_feedback_tool(
+        comment=comment,
+        topic=topic,
+        draft_id=draft_id,
+        action=action,
+        source=source,
+        account_id=account_id,
+        style=style,
+        message_ref=message_ref,
+        reviewer=reviewer,
+        should_extract_style_memory=should_extract_style_memory,
+        metadata=metadata,
+    )
 
 
 @mcp.tool

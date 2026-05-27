@@ -15,6 +15,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - `research_topic_sources`
 - `rerank_topics_with_research`
 - `retrieve_knowledge`
+- `record_draft_feedback`
 - `ingest_knowledge`
 - `ingest_current_research`
 - `build_generation_context`
@@ -40,6 +41,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
     - 候选初筛后，发送 1 条“本轮候选摘要”。
     - 每个入选话题完成 `generate_comment` 和 `safety_check` 后，发送 1 条“话题待过目”，包含背景依据、生成文本、备选表达和审核意见。
     - 每条“话题待过目”和“本轮完成”消息末尾都必须包含 RAG 入库入口：`RAG 入库：回复「入库 <话题> 自动入库」，或「入库 <话题> 1,3」。`
+    - 每条“话题待过目”消息也必须包含反馈入口：`反馈：保留 / 重写，太像AI / 废弃，商业味太重 / 角度对但太硬。`
     - 全部完成后，发送 1 条“本轮完成”，列出已推送条数和暂不采用话题，并重复 RAG 入库入口。
 12. 最终 cron 输出只保留极短状态，例如“本轮完成，已通过 send_review_message 分段推送 3 条”。不要在最终输出里重复完整草稿。
 
@@ -95,6 +97,7 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - 哪些需要我继续改写
 - 哪些资料值得后续入库 RAG：可以回复 `入库 <话题> 自动入库`，或 `入库 <话题> 1,3`
 - 如果是你手头整理好的资料，可以回复 `入库资料：<内容> 来源：<URL或说明>`
+- 哪些文本反馈值得记录：可以回复 `保留 1`、`重写 2，太像AI`、`废弃 3，商业味太重`
 ```
 
 ## 要求
@@ -109,3 +112,4 @@ Hermes MCP 当前把 HotComment-AI 工具暴露为裸工具名。只能调用下
 - 对中高风险话题，生成文本要更克制、理性、少定性。
 - 微博智搜和 Exa 资料只作为本轮临时上下文，除非用户明确要求，否则不要入库 RAG。
 - 用户明确回复 `入库`、`自动入库`、`直接入库` 或资料编号时，才调用 `ingest_current_research` / `ingest_knowledge`；未授权时只列来源并等待确认。
+- 用户对草稿的保留、重写、废弃、太像 AI、太硬、角度对/错等反馈，先调用 `record_draft_feedback` 写入待审核反馈记录；不要自动写入风格记忆库。

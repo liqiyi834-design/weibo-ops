@@ -19,11 +19,13 @@ from app.schemas.comment import TopicRerankRequest, TopicRerankResponse
 from app.schemas.comment import TopicResearchSourcesRequest, TopicResearchSourcesResponse
 from app.schemas.comment import WeiboAiSearchResearchRequest
 from app.schemas.comment import TopicAsset, TopicAssetCreateRequest, TopicAssetSummary, TopicAssetUpdateRequest
+from app.schemas.feedback import DraftFeedbackRecord, DraftFeedbackRequest, DraftFeedbackResponse
 from app.schemas.notification import ReviewMessageRequest, ReviewMessageResponse
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.candidate_context_service import build_candidate_background_context
 from app.services.candidate_pool_rerank_service import CandidatePoolRerankService
 from app.services.draft_service import DraftService
+from app.services.draft_feedback_service import DraftFeedbackService
 from app.services.exa_research_service import ExaResearchService
 from app.services.generation_context_service import GenerationContextService
 from app.services.generation_pipeline import GenerationPipeline
@@ -280,6 +282,16 @@ def _with_candidate_background_context(request: DraftCreateRequest | ZhihuDraftC
 @router.get("/api/drafts", response_model=list[DraftSummary])
 def list_drafts() -> list[DraftSummary]:
     return DraftService().list_drafts()
+
+
+@router.post("/api/draft-feedback", response_model=DraftFeedbackResponse)
+def record_draft_feedback(request: DraftFeedbackRequest) -> DraftFeedbackResponse:
+    return DraftFeedbackService().record(request)
+
+
+@router.get("/api/draft-feedback", response_model=list[DraftFeedbackRecord])
+def list_draft_feedback(limit: int = 50) -> list[DraftFeedbackRecord]:
+    return DraftFeedbackService().list_records(limit=limit)
 
 
 @router.get("/api/drafts/{draft_id}", response_model=DraftRecord)

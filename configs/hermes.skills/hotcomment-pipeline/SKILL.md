@@ -18,6 +18,7 @@ tags: [hotcomment, weibo, content, pipeline, mcp, notification, rag]
 - Do not quote, summarize, or repeat this skill file, the workflow prompt, tool logs, JSON, or MCP raw outputs.
 - Use at most 5 coarse candidates and at most 3 final draft topics for scheduled Telegram workflows.
 - Do not ingest Weibo AiSearch or Exa research into RAG unless the user explicitly asks for ingest, auto ingest, or confirms source indices.
+- Draft review feedback must be recorded with `record_draft_feedback` first. Do not directly convert feedback into persona/style RAG unless the user explicitly asks to extract or ingest style memory.
 
 ## Notification Rules
 
@@ -34,6 +35,8 @@ Use `send_review_message` for staged Telegram delivery:
 - Use `message_type` values such as `candidate_summary`, `draft_review`, and `workflow_done`.
 - Use a stable `dedupe_key` per run and stage when possible. The key must include the current run timestamp or session id, not only the date, so repeated manual tests on the same day do not get skipped.
 - Keep each body concise. The service will split long messages, but the agent should still avoid bloat.
+- For each draft review message, also mention feedback examples such as:
+  `反馈：保留 / 重写，太像AI / 废弃，商业味太重 / 角度对但太硬。`
 
 ## Workflow: auto_candidate_to_review_text
 
@@ -77,6 +80,37 @@ Tool routing:
 
 If the topic is ambiguous, use the exact title from the most recent draft review when available. Otherwise ask for the topic title in one short sentence.
 
+## Draft Feedback Follow-up
+
+When the user replies with draft review feedback, record it as a pending feedback item.
+
+Recognize these forms:
+
+- `保留 1`
+- `重写 2，太像AI`
+- `废弃 3，商业味太重`
+- `这条角度对，但太硬`
+- `改得更阴阳怪气一点`
+- `更克制一点`
+
+Tool routing:
+
+1. Identify the topic or draft from the most recent `draft_review` message. If unclear, ask for the topic or number.
+2. Map the feedback to `record_draft_feedback.action`:
+   - keep / 保留 -> `keep`
+   - rewrite / 重写 / 改写 -> `rewrite`
+   - discard / 废弃 / 不要 -> `discard`
+   - 太像AI -> `too_ai`
+   - 太硬 -> `too_hard`
+   - 太软 / 不够锐 -> `too_soft`
+   - 角度错 / 跑偏 -> `wrong_angle`
+   - 角度对 -> `good_angle`
+   - 需要核验 -> `needs_fact_check`
+   - otherwise -> `style_note`
+3. Call `record_draft_feedback` with `source: "telegram"` or `source: "hermes"`, the topic/draft id, action, and the user's original feedback as `comment`.
+4. Reply briefly: `已记录反馈，状态：待审核沉淀。`
+5. If the user explicitly says `沉淀为风格记忆` / `提炼风格` / `入风格库`, then call `extract_style_memory` first. Only call `ingest_style_memory` when the user authorizes ingest.
+
 ## Output Template For Draft Review Message
 
 ### 话题：...
@@ -99,6 +133,7 @@ If the topic is ambiguous, use the exact title from the most recent draft review
 - 是否可过目：是/否
 - 主要风险：一句话
 - RAG 入库：回复「入库 <话题> 自动入库」，或「入库 <话题> 1,3」。
+- 反馈入口：回复「保留 / 重写，太像AI / 废弃，商业味太重 / 角度对但太硬」。
 
 ## Quality Rules
 

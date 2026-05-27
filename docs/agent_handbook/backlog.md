@@ -291,6 +291,17 @@ Hermes 可调用的现有 MCP 工具：
 - 工作台入口：在草稿审核区加入一键反馈按钮，把人工编辑意见沉淀回人格/风格记忆。
 - Hermes 入口：允许 Hermes 汇总本轮草稿反馈，但只写入待审核反馈记录，不直接改人格规则。
 
+已推进：
+
+- Hermes/MCP 已新增 `record_draft_feedback`，先把 Telegram/Hermes 反馈写入 `output/draft_feedback/feedback.jsonl`。
+- Hermes workflow `draft_feedback_review` 已定义“保留/重写/废弃/太像 AI/太硬/角度对”等反馈语义。
+
+网页待办：
+
+- Streamlit 草稿箱增加反馈按钮：保留、重写、废弃、太像 AI、太硬、角度对/错。
+- 网页按钮调用同一个 `DraftFeedbackService` / `/api/draft-feedback`，不要另建反馈格式。
+- 草稿详情页展示最近反馈记录，并保留“提炼为风格记忆”的人工确认按钮。
+
 第一版建议：
 
 ```text
