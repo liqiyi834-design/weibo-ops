@@ -109,6 +109,7 @@ topic + context_text
 - 草稿箱：`output/drafts/`
 - 人工背景资料：`app/knowledge/inbox/`
 - 风格记忆库：`app/knowledge/style_memory/`
+- 草稿反馈流水：`output/draft_feedback/feedback.jsonl`
 - RAG 索引：`.rag_index/`
 
 注意：
@@ -164,6 +165,110 @@ context_text = Exa 临时检索摘要 + RAG 检索结果
 ```
 
 RAG 入库不应作为实时检索的默认副作用。只有资料经过人工确认，或被判断为长期可复用时，才进入 `app/knowledge/inbox/` 并 rebuild 索引。
+
+## 三类 RAG 记忆层
+
+当前底层仍是一个 `.rag_index/index.json` 索引，但业务上已经分成三类记忆层。实现时先用目录、元数据和工具边界区分，暂不急着拆成三套物理索引。
+
+```text
+背景资料 RAG
+-> app/knowledge/inbox/
+-> 事实、来源、资料卡、长期可复用背景
+
+风格记忆 RAG
+-> app/knowledge/style_memory/
+-> hook、节奏、句式、论证结构、禁用表达
+
+反馈 RAG
+-> output/draft_feedback/feedback.jsonl
+-> summarize_draft_feedback
+-> 人工确认
+-> app/knowledge/inbox/ 或未来 persona_memory/
+```
+
+### 背景资料 RAG
+
+背景资料 RAG 只保存经过人工确认或明确授权的长期资料，不保存每次搜索拿到的全部临时网页结果。
+
+入口：
+
+- `ingest_knowledge`
+- `ingest_current_research`
+- Streamlit “把本轮资料入库 RAG”
+- Hermes “入库 <话题> 自动入库 / 1,3”
+
+适合保存：
+
+- 可靠来源摘要。
+- 时间线和关键事实。
+- 已核验的长期背景。
+- 以后多个话题都可能复用的资料卡。
+
+不适合保存：
+
+- 低质量转载。
+- 未核实爆料。
+- 只服务当天情绪的小八卦。
+- 搜索结果原始 JSON。
+
+### 风格记忆 RAG
+
+风格记忆 RAG 保存“怎么写”，不保存大段原文，也不复刻某个外部博主本人。
+
+入口：
+
+- `extract_style_memory`
+- `ingest_style_memory`
+- 工作台风格记忆入口
+- Hermes `style_memory_ingest`
+
+适合保存：
+
+- 开头 hook。
+- 句子节奏。
+- 论证结构。
+- 修辞偏好。
+- 适用话题。
+- 禁用表达和避雷点。
+
+外部公开文本默认 `permission_level=public_reference` 且 `needs_review=true`。自有或授权文本可以更主动沉淀，但仍只保存抽象规则和短例句。
+
+### 反馈 RAG
+
+反馈 RAG 不是把 `feedback.jsonl` 原样入库，而是把人工审稿反馈先当作“流水记录”，再提炼成长期规则草案。
+
+入口：
+
+- `record_draft_feedback`
+- `summarize_draft_feedback`
+
+流程：
+
+```text
+Telegram/工作台反馈
+-> record_draft_feedback
+-> output/draft_feedback/feedback.jsonl
+-> summarize_draft_feedback(use_llm=false, auto_ingest=false)
+-> 生成可审核 Markdown 草案
+-> 用户确认
+-> summarize_draft_feedback(auto_ingest=true)
+-> KnowledgeIngestionService 写入 RAG
+```
+
+反馈 RAG 适合沉淀：
+
+- “太像 AI”的具体原因。
+- “太硬/太软”的语气边界。
+- “角度对/角度错”的判断框架。
+- 商业推广、公共争议、娱乐话题等类别的取舍偏好。
+- 事实未核清时应降低定性强度的经验。
+
+边界：
+
+- 原始 JSONL 不直接进入 RAG。
+- 单条反馈不直接变成人格规则。
+- 默认 `summarize_draft_feedback(use_llm=false)`，降低额度消耗。
+- `auto_ingest=true` 只在用户确认后使用。
 
 ## RAG 技术范式判断
 

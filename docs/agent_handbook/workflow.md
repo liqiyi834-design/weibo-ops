@@ -183,6 +183,39 @@ extract_style_memory
 
 外部公开博主默认只作为 `public_reference`，入库卡片必须 `needs_review=true`。自有或授权账号可以自动沉淀，但仍只保存风格摘要、短例句和禁用点。
 
+## 反馈 RAG 流程
+
+反馈 RAG 用于沉淀“这条为什么像/不像我”的判断经验。它不直接保存原始 JSON，而是先把审稿反馈整理成可审核规则草案。
+
+记录入口：
+
+```text
+Telegram/Hermes 回复“保留/重写/废弃/太像AI/太硬/角度对”
+-> record_draft_feedback
+-> output/draft_feedback/feedback.jsonl
+```
+
+提炼入口：
+
+```text
+summarize_draft_feedback(use_llm=false, auto_ingest=false)
+-> 生成 Markdown 草案
+-> 人工确认
+-> summarize_draft_feedback(auto_ingest=true)
+-> 写入 app/knowledge/inbox/
+-> rebuild RAG
+```
+
+默认 `use_llm=false`，先用规则低成本聚合；只有用户明确要求“用模型精炼”时才启用 LLM。默认 `auto_ingest=false`，避免把临时反馈污染长期记忆。
+
+反馈提炼后应包含：
+
+- 表达偏好：哪些句式更像人，哪些像 AI。
+- 判断偏好：哪些话题该保留、降权或废弃。
+- 语气边界：太硬、太软、太满、太广告。
+- 事实核验规则：不确定时如何降温和标注。
+- 复盘示例：少量短反馈，不保存大段原文。
+
 ## 多平台方向
 
 平台之间不应长期共用同一个候选池。
