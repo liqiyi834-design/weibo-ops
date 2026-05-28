@@ -38,11 +38,22 @@ from app.services.weibo_aisearch_research_service import WeiboAiSearchResearchSe
 from app.llm.client import build_llm_client
 from app.schemas.comment import GenerateCommentRequest
 from app.schemas.comment import GenerateZhihuAnswerRequest
+from app.schemas.feedback import DraftFeedbackRequest
+from app.services.draft_feedback_service import DraftFeedbackService
 
 
 DEFAULT_API_BASE_URL = os.getenv("API_BASE_URL", "")
 STATUS_OPTIONS = ["candidate", "selected", "skipped", "researched"]
 DRAFT_STATUS_OPTIONS = ["draft", "reviewed", "rejected", "published_manually"]
+DRAFT_FEEDBACK_ACTIONS = [
+    ("keep", "保留", "保留当前核心判断和表达方向。"),
+    ("rewrite", "重写", "需要重新组织表达或结构。"),
+    ("discard", "废弃", "不建议继续推进这条草稿。"),
+    ("too_ai", "太像AI", "减少模板感、总结腔和空泛判断。"),
+    ("too_hard", "太硬", "降低定性强度，补边界和依据。"),
+    ("good_angle", "角度对", "保留当前角度，再微调语气。"),
+    ("wrong_angle", "角度错", "核心角度跑偏，需要换判断框架。"),
+]
 
 
 class ApiClient:
@@ -95,6 +106,12 @@ class ApiClient:
 
     def update_draft(self, draft_id: str, payload: dict) -> dict:
         return self.request("PATCH", f"/api/drafts/{draft_id}", json=payload)
+
+    def record_draft_feedback(self, payload: dict) -> dict:
+        return self.request("POST", "/api/draft-feedback", json=payload)
+
+    def list_draft_feedback(self, limit: int = 50) -> list[dict]:
+        return self.request("GET", "/api/draft-feedback", params={"limit": limit})
 
     def ingest_knowledge(self, payload: dict) -> dict:
         return self.request("POST", "/api/knowledge/ingest", json=payload)
@@ -281,6 +298,13 @@ class LocalServiceClient:
             edited_text=payload.get("edited_text"),
         )
         return draft.model_dump(mode="json")
+
+    def record_draft_feedback(self, payload: dict) -> dict:
+        response = DraftFeedbackService().record(DraftFeedbackRequest(**payload))
+        return response.model_dump(mode="json")
+
+    def list_draft_feedback(self, limit: int = 50) -> list[dict]:
+        return [record.model_dump(mode="json") for record in DraftFeedbackService().list_records(limit=limit)]
 
     def ingest_knowledge(self, payload: dict) -> dict:
         result = KnowledgeIngestionService(self.settings).ingest(KnowledgeIngestRequest(**payload))
@@ -1132,6 +1156,7 @@ def render_create_draft_from_candidate(api: ApiClient) -> None:
                 draft = api.create_draft(payload)
             st.success(f"草稿已保存：{draft['id']}")
             render_draft_detail(draft)
+            render_draft_feedback_panel(api, draft)
 
         run_action(action)
 
@@ -1156,6 +1181,7 @@ def render_create_draft_from_candidate(api: ApiClient) -> None:
                 draft = api.create_zhihu_draft(payload)
             st.success(f"知乎回答草稿已保存：{draft['id']}")
             render_draft_detail(draft)
+            render_draft_feedback_panel(api, draft)
 
         run_action(action)
 
@@ -1228,6 +1254,7 @@ def render_draft_list(api: ApiClient) -> None:
     if draft_holder:
         render_draft_detail(draft_holder)
         render_draft_editor(api, draft_holder)
+        render_draft_feedback_panel(api, draft_holder)
 
 
 def render_draft_detail(draft: dict) -> None:
@@ -1329,6 +1356,88 @@ def render_draft_editor(api: ApiClient, draft: dict) -> None:
             render_draft_detail(updated)
 
         run_action(action)
+
+
+def render_draft_feedback_panel(api: ApiClient, draft: dict) -> None:
+    st.markdown("### 快捷反馈")
+    st.caption("反馈只记录为 pending_review，供后续人工复盘和风格记忆提炼，不会自动发布、自动改写或自动入库。")
+    comment = st.text_input(
+        "反馈补充",
+        value="",
+        placeholder="可补一句原因，例如：事实没核清，语气先收住。",
+        key=f"draft_feedback_comment_{draft['id']}",
+    )
+
+    columns = st.columns(len(DRAFT_FEEDBACK_ACTIONS))
+    for index, (action, label, default_comment) in enumerate(DRAFT_FEEDBACK_ACTIONS):
+        with columns[index]:
+            if st.button(label, key=f"draft_feedback_{draft['id']}_{action}", use_container_width=True):
+                payload = build_draft_feedback_payload(
+                    draft=draft,
+                    action=action,
+                    comment=comment or default_comment,
+                )
+
+                def record_action() -> None:
+                    response = api.record_draft_feedback(payload)
+                    st.success(f"已记录反馈：{response['record']['status']}")
+
+                run_action(record_action)
+
+    st.markdown("#### 最近反馈")
+    records: list[dict] = []
+    run_action(lambda: records.extend(api.list_draft_feedback(limit=50)))
+    draft_records = filter_draft_feedback_records(records, draft["id"], limit=8)
+    if not draft_records:
+        st.info("这条草稿还没有反馈记录。")
+        return
+
+    pending_count = sum(1 for record in draft_records if record.get("status") == "pending_review")
+    st.caption(f"最近 {len(draft_records)} 条，pending_review：{pending_count}")
+    st.dataframe(
+        [
+            {
+                "时间": record.get("created_at", ""),
+                "动作": draft_feedback_action_label(record.get("action", "")),
+                "状态": record.get("status", ""),
+                "备注": record.get("comment", ""),
+                "来源": record.get("source", ""),
+            }
+            for record in draft_records
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+def build_draft_feedback_payload(draft: dict, action: str, comment: str) -> dict:
+    return {
+        "topic": draft.get("topic"),
+        "draft_id": draft["id"],
+        "action": action,
+        "comment": comment.strip() or draft_feedback_default_comment(action),
+        "source": "streamlit",
+        "account_id": draft.get("account_id") or "today_direct",
+        "style": draft.get("style"),
+        "should_extract_style_memory": False,
+        "metadata": {
+            "platform": draft.get("platform", "weibo"),
+            "draft_type": draft.get("draft_type", "micro_comment"),
+            "draft_status": draft.get("status"),
+        },
+    }
+
+
+def filter_draft_feedback_records(records: list[dict], draft_id: str, limit: int = 8) -> list[dict]:
+    return [record for record in records if record.get("draft_id") == draft_id][:limit]
+
+
+def draft_feedback_action_label(action: str) -> str:
+    return next((label for item_action, label, _ in DRAFT_FEEDBACK_ACTIONS if item_action == action), action)
+
+
+def draft_feedback_default_comment(action: str) -> str:
+    return next((comment for item_action, _, comment in DRAFT_FEEDBACK_ACTIONS if item_action == action), "人工快捷反馈。")
 
 
 def draft_display_text(draft: dict) -> str:

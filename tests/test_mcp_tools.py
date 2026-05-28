@@ -8,6 +8,7 @@ import mcp_server.tools as tools
 from mcp_server.tools import (
     classify_topic_tool,
     generate_comment_tool,
+    get_hot_topic_clusters_tool,
     get_hot_topics_tool,
     list_drafts_tool,
     rebuild_knowledge_tool,
@@ -117,6 +118,15 @@ def test_mcp_get_hot_topics_tool():
     assert result["items"]
     assert len(result["items"]) <= 3
     assert "keyword" in result["items"][0]
+
+
+def test_mcp_get_hot_topic_clusters_tool():
+    settings = Settings(OPENAI_API_KEY=None, KNOWLEDGE_DIR=Path("app/knowledge"))
+    result = get_hot_topic_clusters_tool(platform="baidu,zhihu", limit=8, max_clusters=5, settings=settings)
+
+    assert result["clusters"]
+    assert len(result["clusters"]) <= 5
+    assert set(result["platforms"]) == {"baidu", "zhihu"}
 
 
 def test_mcp_select_comment_topics_tool():

@@ -169,22 +169,26 @@ url = f"https://s.weibo.com/aisearch?q={quote(f'#{topic}#')}&Refer=weibo_aisearc
 
 ## P4：多平台 HotTopicProvider（MVP 已接入）
 
-目标：统一不同平台热榜读取结果。当前已完成第一版 provider 抽象和统一入口，微博热榜已迁移到 `weibo` provider 路径，并新增公开低风险的 `baidu` provider。
+目标：统一不同平台热榜读取结果。当前已完成第一版 provider 抽象和统一入口，微博热榜已迁移到 `weibo` provider 路径，并参考 DailyHotApi 的公开实现移植了 `baidu`、`zhihu`、`bilibili` provider。
 
 已实现：
 
 - `HotTopicProvider` / `BaseHotSearchProvider` 统一 provider 接口。
 - `HotSearchService.get_hot_topics(platform=..., limit=...)` 统一入口。
-- `GET /api/hot?platform=weibo|baidu|all` 统一热榜 API。
+- `GET /api/hot?platform=weibo|baidu|zhihu|bilibili|all` 统一热榜 API。
+- `GET /api/hot/clusters?platform=all` 跨平台同题聚合 API。
 - 保留兼容入口 `GET /api/hot/weibo`。
-- MCP `get_hot_topics` / `select_comment_topics` 支持 `platform` / `source_platform` 参数，默认仍为 `weibo`。
+- MCP `get_hot_topics` / `get_hot_topic_clusters` / `select_comment_topics` 支持 `platform` / `source_platform` 参数，默认仍为 `weibo`。
 - 热榜 item、选题、候选池条目保留 `platform`、`source`、`url`、`rank`、`original_rank` 和 `hot_value`。
-- `platform=all` 当前聚合 `weibo` 与 `baidu`。
+- `platform=all` 当前聚合 `weibo`、`baidu`、`zhihu` 与 `bilibili`。
+- `HotTopicClusterService` 已支持标题规范化、短标题包含和 token overlap 的保守聚合。
 
 后续待办：
 
-- 继续接入更多公开、低风险、无需账号操作的来源，例如知乎热榜、B 站热榜。
-- 支持跨平台同题聚合。
+- 继续接入更多公开、低风险、无需账号操作的来源，例如 36氪、澎湃新闻、今日头条等。
+- 将跨平台 cluster 接入候选池评分，加上跨平台出现加分。
+- 继续优化同题聚合的中文分词、别名归一和误合并防护。
+- 补充 DailyHotApi MIT License attribution / NOTICE。
 
 ## P5：Hermes agents / MCP 自动化编排（基本完成）
 

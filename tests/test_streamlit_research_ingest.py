@@ -1,4 +1,9 @@
-from app_ui.streamlit_app import research_source_content, research_source_to_knowledge_payload
+from app_ui.streamlit_app import (
+    build_draft_feedback_payload,
+    filter_draft_feedback_records,
+    research_source_content,
+    research_source_to_knowledge_payload,
+)
 
 
 def test_research_source_content_includes_summary_and_highlights():
@@ -42,3 +47,38 @@ def test_research_source_to_knowledge_payload_links_candidate_and_rebuilds():
     assert payload["candidate_item_id"] == "item-1"
     assert payload["needs_review"] is True
     assert payload["rebuild_index"] is True
+
+
+def test_build_draft_feedback_payload_keeps_human_review_boundary():
+    payload = build_draft_feedback_payload(
+        {
+            "id": "draft-1",
+            "topic": "某热点",
+            "account_id": "today_direct",
+            "style": "rational_critic",
+            "platform": "weibo",
+            "draft_type": "micro_comment",
+            "status": "draft",
+        },
+        action="too_ai",
+        comment="太像AI，少一点总结腔。",
+    )
+
+    assert payload["draft_id"] == "draft-1"
+    assert payload["topic"] == "某热点"
+    assert payload["action"] == "too_ai"
+    assert payload["source"] == "streamlit"
+    assert payload["should_extract_style_memory"] is False
+    assert payload["metadata"]["draft_status"] == "draft"
+
+
+def test_filter_draft_feedback_records_returns_recent_records_for_current_draft():
+    records = [
+        {"draft_id": "draft-1", "action": "keep", "status": "pending_review"},
+        {"draft_id": "draft-2", "action": "discard", "status": "pending_review"},
+        {"draft_id": "draft-1", "action": "too_hard", "status": "pending_review"},
+    ]
+
+    filtered = filter_draft_feedback_records(records, "draft-1", limit=1)
+
+    assert filtered == [records[0]]

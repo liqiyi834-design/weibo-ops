@@ -52,3 +52,7 @@ def build_weibo_search_url(keyword: str) -> str:
 
 def build_baidu_search_url(keyword: str) -> str:
     return f"https://www.baidu.com/s?wd={quote(keyword)}"
+
+
+def build_zhihu_search_url(keyword: str) -> str:
+    return f"https://www.zhihu.com/search?type=content&q={quote(keyword)}"

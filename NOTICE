@@ -1,0 +1,11 @@
+HotComment-AI includes provider implementations informed by public open-source
+hot-list projects.
+
+DailyHotApi
+Copyright (c) 2023 imsyy
+License: MIT
+Repository: https://github.com/imsyy/DailyHotApi
+
+The Baidu, Zhihu, and Bilibili hot-list providers were implemented in Python
+with reference to DailyHotApi's public route implementations, while preserving
+this project's own schema, safety boundaries, fallback behavior, and tests.

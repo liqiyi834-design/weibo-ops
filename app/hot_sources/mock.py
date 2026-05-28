@@ -6,6 +6,7 @@ from app.hot_sources.base import (
     HotSearchResponse,
     build_baidu_search_url,
     build_weibo_search_url,
+    build_zhihu_search_url,
 )
 
 
@@ -27,6 +28,8 @@ class MockHotSearchProvider(BaseHotSearchProvider):
             self.url_builder = url_builder
         elif platform == "baidu":
             self.url_builder = build_baidu_search_url
+        elif platform == "zhihu":
+            self.url_builder = build_zhihu_search_url
         else:
             self.url_builder = build_weibo_search_url
 

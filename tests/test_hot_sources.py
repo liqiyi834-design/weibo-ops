@@ -2,9 +2,11 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.hot_sources.baidu import BaiduTopHotSearchProvider
+from app.hot_sources.bilibili import BilibiliRankingProvider
 from app.hot_sources.mock import MockHotSearchProvider
 from app.hot_sources.visible_capture import VisibleCaptureHotSearchProvider
 from app.hot_sources.weibo_cookie import WeiboCookieHotSearchProvider
+from app.hot_sources.zhihu import ZhihuHotListProvider
 
 
 def test_mock_hot_search_provider_returns_items():
@@ -92,6 +94,76 @@ def test_baidu_top_provider_parses_json_payload():
     assert items[0].original_rank == 1
     assert items[0].hot_value == "998877"
     assert items[0].url == "https://example.com/a"
+
+
+def test_zhihu_hot_provider_parses_api_payload():
+    payload = {
+        "data": [
+            {
+                "target": {
+                    "id": "123",
+                    "title": "知乎热榜问题一",
+                    "excerpt": "问题摘要",
+                    "url": "https://api.zhihu.com/questions/123",
+                },
+                "detail_text": "123 万热度",
+            }
+        ]
+    }
+
+    items = ZhihuHotListProvider()._parse_items(payload, limit=1)
+
+    assert items[0].keyword == "知乎热榜问题一"
+    assert items[0].platform == "zhihu"
+    assert items[0].hot_value == "1230000"
+    assert items[0].url == "https://www.zhihu.com/question/123"
+
+
+def test_bilibili_ranking_provider_parses_api_payload():
+    payload = {
+        "data": {
+            "list": [
+                {
+                    "bvid": "BV123",
+                    "title": "B站热门视频一",
+                    "desc": "视频简介",
+                    "owner": {"name": "UP主"},
+                    "stat": {"view": 456789},
+                    "short_link_v2": "https://b23.tv/BV123",
+                }
+            ]
+        }
+    }
+
+    items = BilibiliRankingProvider()._parse_items(payload, limit=1)
+
+    assert items[0].keyword == "B站热门视频一"
+    assert items[0].platform == "bilibili"
+    assert items[0].hot_value == "456789"
+    assert items[0].url == "https://b23.tv/BV123"
+    assert items[0].raw["author"] == "UP主"
+
+
+def test_bilibili_ranking_provider_parses_legacy_payload():
+    payload = {
+        "data": {
+            "list": [
+                {
+                    "bvid": "BV456",
+                    "title": "B站旧接口热门视频",
+                    "author": "旧接口UP",
+                    "video_review": 12345,
+                }
+            ]
+        }
+    }
+
+    items = BilibiliRankingProvider()._parse_items(payload, limit=1)
+
+    assert items[0].keyword == "B站旧接口热门视频"
+    assert items[0].hot_value == "12345"
+    assert items[0].url == "https://www.bilibili.com/video/BV456"
+    assert items[0].raw["author"] == "旧接口UP"
 
 
 def test_weibo_cookie_provider_detects_login_redirect():

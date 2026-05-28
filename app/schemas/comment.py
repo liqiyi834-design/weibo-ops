@@ -21,6 +21,38 @@ class HotTopic(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class HotTopicClusterItem(BaseModel):
+    rank: int | None = None
+    original_rank: int | None = None
+    keyword: str
+    platform: str
+    source: str
+    url: str | None = None
+    hot_value: str | None = None
+
+
+class HotTopicCluster(BaseModel):
+    canonical_title: str
+    source_platforms: list[str] = Field(default_factory=list)
+    source_urls: list[str] = Field(default_factory=list)
+    best_rank: int | None = None
+    platform_ranks: dict[str, int] = Field(default_factory=dict)
+    hot_signals: dict[str, str | int | float | None] = Field(default_factory=dict)
+    items: list[HotTopicClusterItem] = Field(default_factory=list)
+    confidence: float = Field(default=1.0, ge=0, le=1)
+    match_reason: str = ""
+
+
+class HotTopicClusterResponse(BaseModel):
+    source: str
+    platforms: list[str] = Field(default_factory=list)
+    clusters: list[HotTopicCluster] = Field(default_factory=list)
+    fallback_used: bool = False
+    error: str | None = None
+    notes: list[str] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 TopicAssetStatus = Literal["observing", "candidate", "research_needed", "researched", "archived"]
 PlatformTarget = Literal["weibo", "zhihu", "video", "wechat"]
 PlatformRoutingDecisionType = Literal["recommended", "optional", "not_recommended"]

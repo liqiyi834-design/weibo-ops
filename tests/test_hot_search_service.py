@@ -66,17 +66,17 @@ def test_hot_search_service_all_keeps_platform_metadata(monkeypatch):
 
 def test_hot_search_service_all_interleaves_by_original_rank(monkeypatch):
     service = HotSearchService(Settings())
-    monkeypatch.setattr(service, "supported_platforms", ("weibo", "baidu"))
+    monkeypatch.setattr(service, "supported_platforms", ("weibo", "baidu", "zhihu", "bilibili"))
     monkeypatch.setattr(
         service,
         "_provider_for",
         lambda platform: FakeHotTopicProvider(platform, [f"{platform} 话题一", f"{platform} 话题二"]),
     )
 
-    response = service.get_hot_topics(platform="all", limit=3)
+    response = service.get_hot_topics(platform="all", limit=5)
 
-    assert [item.platform for item in response.items] == ["weibo", "baidu", "weibo"]
-    assert [item.original_rank for item in response.items] == [1, 1, 2]
+    assert [item.platform for item in response.items] == ["weibo", "baidu", "zhihu", "bilibili", "weibo"]
+    assert [item.original_rank for item in response.items] == [1, 1, 1, 1, 2]
 
 
 def test_hot_search_service_rejects_unknown_platform():

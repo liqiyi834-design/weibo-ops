@@ -2,14 +2,16 @@ from datetime import datetime, timezone
 
 from app.core.config import Settings
 from app.hot_sources.baidu import BaiduTopHotSearchProvider
+from app.hot_sources.bilibili import BilibiliRankingProvider
 from app.hot_sources.base import BaseHotSearchProvider, HotSearchResponse
 from app.hot_sources.mock import MockHotSearchProvider
 from app.hot_sources.visible_capture import VisibleCaptureHotSearchProvider
 from app.hot_sources.weibo_cookie import WeiboCookieHotSearchProvider
+from app.hot_sources.zhihu import ZhihuHotListProvider
 
 
 class HotSearchService:
-    supported_platforms = ("weibo", "baidu")
+    supported_platforms = ("weibo", "baidu", "zhihu", "bilibili")
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -58,6 +60,10 @@ class HotSearchService:
             return self._weibo_provider(cate="realtimehot")
         if platform == "baidu":
             return BaiduTopHotSearchProvider(timeout=self.settings.request_timeout_seconds)
+        if platform == "zhihu":
+            return ZhihuHotListProvider(timeout=self.settings.request_timeout_seconds)
+        if platform == "bilibili":
+            return BilibiliRankingProvider(timeout=self.settings.request_timeout_seconds)
         raise ValueError(f"Unsupported hot topic platform: {platform}")
 
     def _weibo_provider(self, cate: str) -> BaseHotSearchProvider:

@@ -7,6 +7,7 @@ import app.api.routes as routes
 from app.main import app
 from app.llm.client import MockLLMClient
 from app.services.candidate_pool_service import CandidatePoolService
+from app.services.draft_feedback_service import DraftFeedbackService
 from app.services.draft_service import DraftService
 from app.services.topic_asset_service import TopicAssetService
 
@@ -58,6 +59,19 @@ def test_hot_topics_rejects_unknown_platform():
 
     assert response.status_code == 400
     assert "Unsupported hot topic platform" in response.json()["detail"]
+
+
+def test_hot_topic_clusters_endpoint():
+    client = TestClient(app)
+    response = client.get("/api/hot/clusters?platform=baidu,zhihu&limit=8&max_clusters=5")
+    body = response.json()
+
+    assert response.status_code == 200
+    assert set(body["platforms"]) == {"baidu", "zhihu"}
+    assert len(body["clusters"]) <= 5
+    assert body["clusters"]
+    assert "canonical_title" in body["clusters"][0]
+    assert "source_platforms" in body["clusters"][0]
 
 
 def test_knowledge_rebuild():
@@ -346,3 +360,33 @@ def test_create_zhihu_draft(monkeypatch):
 
     assert update_response.status_code == 200
     assert update_response.json()["published_url"] == "https://www.zhihu.com/question/1/answer/2"
+
+
+def test_draft_feedback_api_records_pending_review(monkeypatch):
+    feedback_path = Path(".rag_index") / f"api-draft-feedback-test-{uuid4().hex}" / "feedback.jsonl"
+    monkeypatch.setattr(routes, "DraftFeedbackService", lambda *args, **kwargs: DraftFeedbackService(feedback_path))
+    client = TestClient(app)
+
+    create_response = client.post(
+        "/api/draft-feedback",
+        json={
+            "topic": "某热点",
+            "draft_id": "draft-1",
+            "action": "too_hard",
+            "comment": "语气太硬，事实边界先收住。",
+            "source": "streamlit",
+            "account_id": "today_direct",
+            "style": "rational_critic",
+            "should_extract_style_memory": False,
+        },
+    )
+    list_response = client.get("/api/draft-feedback?limit=10")
+
+    assert create_response.status_code == 200
+    record = create_response.json()["record"]
+    assert record["draft_id"] == "draft-1"
+    assert record["action"] == "too_hard"
+    assert record["source"] == "streamlit"
+    assert record["status"] == "pending_review"
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["status"] == "pending_review"

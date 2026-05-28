@@ -10,6 +10,7 @@ from app.schemas.comment import DraftCreateRequest, DraftRecord, DraftSummary, D
 from app.schemas.comment import GenerationContextRequest, GenerationContextResponse
 from app.schemas.comment import GenerateCommentRequest, GenerateCommentResponse
 from app.schemas.comment import GenerateZhihuAnswerRequest, GenerateZhihuAnswerResponse, ZhihuDraftCreateRequest
+from app.schemas.comment import HotTopicClusterResponse
 from app.schemas.comment import HotTopic, TopicSelectionRequest, TopicSelectionResponse
 from app.schemas.comment import KnowledgeIngestRequest, KnowledgeIngestResponse, KnowledgeRecord, KnowledgeRecordSummary
 from app.schemas.comment import PlatformRoutingResponse
@@ -37,6 +38,7 @@ from app.services.generation_context_service import GenerationContextService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.hermes_status_service import HermesStatusService
 from app.services.hot_search_service import HotSearchService
+from app.services.hot_topic_cluster_service import HotTopicClusterService
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.knowledge_service import KnowledgeService
 from app.services.notification_service import NotificationService
@@ -66,6 +68,7 @@ def root() -> dict[str, str]:
         "docs": "/docs",
         "health": "/health",
         "hot": "/api/hot",
+        "hot_clusters": "/api/hot/clusters",
         "hot_weibo": "/api/hot/weibo",
         "generate": "/api/comment/generate",
         "knowledge_rebuild": "/api/knowledge/rebuild",
@@ -102,6 +105,16 @@ def get_hot_topics(platform: str = "weibo", limit: int = 20) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return response.model_dump()
+
+
+@router.get("/api/hot/clusters", response_model=HotTopicClusterResponse)
+def get_hot_topic_clusters(platform: str = "all", limit: int = 50, max_clusters: int = 30) -> HotTopicClusterResponse:
+    settings = get_settings()
+    try:
+        response = HotSearchService(settings).get_hot_topics(platform=platform, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return HotTopicClusterService().cluster(response, max_clusters=max_clusters)
 
 
 @router.post("/api/topics/select", response_model=TopicSelectionResponse)

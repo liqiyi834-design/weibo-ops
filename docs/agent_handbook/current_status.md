@@ -26,6 +26,7 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 - `GET /`
 - `GET /health`
 - `GET /api/hot`
+- `GET /api/hot/clusters`
 - `GET /api/hot/weibo`
 - `POST /api/comment/generate`
 - `GET /api/comment/personas`
@@ -58,8 +59,9 @@ HotComment-AI 已经从单纯微博锐评草稿工具，推进到“少数账号
 已实现：
 
 - 统一 `HotTopicProvider` / `BaseHotSearchProvider` provider 接口。
-- `HotSearchService.get_hot_topics(platform=..., limit=...)` 统一热榜入口，目前已接 `weibo` 和 `baidu`，并支持 `platform=all` 聚合。
-- `GET /api/hot?platform=weibo|baidu|all`，同时保留旧入口 `GET /api/hot/weibo`。
+- `HotSearchService.get_hot_topics(platform=..., limit=...)` 统一热榜入口，目前已接 `weibo`、`baidu`、`zhihu` 和 `bilibili`，并支持 `platform=all` 聚合。
+- `GET /api/hot?platform=weibo|baidu|zhihu|bilibili|all`，同时保留旧入口 `GET /api/hot/weibo`。
+- `GET /api/hot/clusters?platform=all`，用 `HotTopicClusterService` 对多平台热榜做保守同题聚合。
 - Cookie 抓取微博实时热搜。
 - Cookie 失效或登录跳转识别。
 - fallback 到可见采样或 mock。

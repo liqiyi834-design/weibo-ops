@@ -6,6 +6,7 @@ from mcp_server.tools import (
     build_generation_context_tool,
     classify_topic_tool,
     extract_style_memory_tool,
+    get_hot_topic_clusters_tool,
     generate_comment_tool,
     get_ent_topics_tool,
     get_hot_topics_tool,
@@ -35,6 +36,12 @@ mcp = FastMCP("weibo-ops-hotcomment")
 def get_hot_topics(limit: int = 20, platform: str = "weibo") -> dict:
     """Fetch current hot topics by platform, falling back to mock topics if unavailable."""
     return get_hot_topics_tool(limit=limit, platform=platform)
+
+
+@mcp.tool
+def get_hot_topic_clusters(platform: str = "all", limit: int = 50, max_clusters: int = 30) -> dict:
+    """Fetch multi-platform hot topics and merge likely same-topic items into review clusters."""
+    return get_hot_topic_clusters_tool(platform=platform, limit=limit, max_clusters=max_clusters)
 
 
 @mcp.tool

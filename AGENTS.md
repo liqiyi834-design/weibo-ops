@@ -55,7 +55,7 @@ docs/agent_handbook/platform_wechat.md
 
 - FastAPI 核心服务与生成链路。
 - 微博热搜 Cookie 抓取、登录失效识别、fallback 和热度字段清洗。
-- 多平台 HotTopicProvider MVP：已提供统一 `GET /api/hot` 和 `HotSearchService.get_hot_topics(platform=...)`，微博已迁移为 `weibo` provider 路径，并新增 `baidu` 公开热榜 provider。
+- 多平台 HotTopicProvider MVP：已提供统一 `GET /api/hot` 和 `HotSearchService.get_hot_topics(platform=...)`，微博已迁移为 `weibo` provider 路径，并新增 `baidu`、`zhihu`、`bilibili` 公开热榜 provider；`GET /api/hot/clusters` 支持保守同题聚合。
 - 热搜选题推荐与微博候选池 MVP。
 - TopicAsset 综合池 MVP，已接入 LLM 平台分发建议。
 - Streamlit 工作台第一版。
@@ -89,7 +89,7 @@ python -m pytest tests -q -p no:cacheprovider
 当前最值得推进的是：
 
 1. P2：新增独立知乎问题池，停止把微博候选池长期兼作知乎候选池。
-2. P4 后续：继续接入更多公开、低风险热榜来源，并设计跨平台同题聚合。
+2. P4 后续：把跨平台 cluster 接入候选池评分，并继续优化同题聚合。
 3. P6B：设计并实现公众号文章池、栏目配置和中等长度文章草稿生成器。
 4. P7A：升级 Hybrid RAG + Rerank，减少无关写作公式召回，提高事实资料、风格规则和安全边界匹配精度。
 5. P6：继续细化视频创意池，但不急于实现生成链路。

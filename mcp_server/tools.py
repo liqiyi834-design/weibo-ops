@@ -23,6 +23,7 @@ from app.services.generation_context_service import GenerationContextService
 from app.services.generation_pipeline import GenerationPipeline
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService
 from app.services.hot_search_service import HotSearchService
+from app.services.hot_topic_cluster_service import HotTopicClusterService
 from app.services.knowledge_service import KnowledgeService
 from app.services.notification_service import NotificationService
 from app.services.safety_checker import SafetyChecker
@@ -499,6 +500,17 @@ def get_hot_topics_tool(limit: int = 20, platform: str = "weibo", settings: Sett
     active_settings = settings or get_settings()
     response = HotSearchService(active_settings).get_hot_topics(platform=platform, limit=limit)
     return response.model_dump()
+
+
+def get_hot_topic_clusters_tool(
+    platform: str = "all",
+    limit: int = 50,
+    max_clusters: int = 30,
+    settings: Settings | None = None,
+) -> dict:
+    active_settings = settings or get_settings()
+    response = HotSearchService(active_settings).get_hot_topics(platform=platform, limit=limit)
+    return HotTopicClusterService().cluster(response, max_clusters=max_clusters).model_dump()
 
 
 def get_ent_topics_tool(limit: int = 20, settings: Settings | None = None) -> dict:
