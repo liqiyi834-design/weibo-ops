@@ -157,6 +157,64 @@ curl raw.githubusercontent.com 安装脚本长时间卡住
 
 这个经验适用于 mihomo/Clash、Hermes 发行包、浏览器自动化二进制、CLI 工具和其他 GitHub release 资产。
 
+## 服务器部署目录不要混成第二个开发源
+
+现象：
+
+```text
+服务器 /opt/weibo-ops 的 HEAD 落后 GitHub main
+git status 显示大量 modified/untracked
+但其中很多文件其实只是换行差异或运行态文件
+```
+
+本次实际原因是服务器部署目录同时承担了代码目录、运行态数据目录和临时代码修改目录：
+
+- 服务器 `HEAD` 停在旧提交，但部分文件被手工或脚本同步到后续状态。
+- `.env`、`.venv`、`.rag_index`、`output/`、风格记忆、样本文件等运行态内容混在工作树里。
+- Windows 和 Linux 之间 CRLF/LF 换行差异把 modified 数量放大。
+- 服务器访问 GitHub 不稳定，直接 `git pull` 不能作为唯一部署手段。
+
+处理原则：
+
+- 本机/GitHub 是 Git 历史权威，服务器只做部署工作树。
+- 服务器有脏工作区时，先完整备份：
+
+```bash
+git status --short --branch
+git status --porcelain=v1
+git diff --binary
+git diff --stat
+git ls-files --others --exclude-standard
+```
+
+- 用下面命令区分真实内容差异和换行噪声：
+
+```bash
+git diff --name-only --ignore-cr-at-eol origin/main
+git diff --stat --ignore-cr-at-eol origin/main
+```
+
+- 服务器独有但有价值的代码逻辑，先移植回本机最新代码、补测试、提交并 push，再部署。
+- 大版本对齐优先用影子目录：
+
+```text
+/opt/weibo-ops-next-<sha>
+-> 复制 .env/.venv/.rag_index/output 等运行态资源
+-> 跑定向测试和 /health
+-> 停服务
+-> 旧 /opt/weibo-ops 改名备份
+-> next 改名为 /opt/weibo-ops
+-> 启动服务并验证
+```
+
+- 必须留在部署目录内的运行态目录写入服务器本地 `.git/info/exclude`，例如：
+
+```text
+app/knowledge/style_memory/
+```
+
+不要在当前运行目录里直接 `reset --hard`，除非已经确认所有改动已备份、服务可停、目标提交明确。
+
 ## SSH 传文件卡住先查登录用户
 
 现象：

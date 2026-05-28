@@ -111,6 +111,8 @@ mihomo -v
 
 云服务器默认是运行现场，不是开发现场。Git 历史以本机/GitHub 为准。
 
+`/opt/weibo-ops` 默认应保持为部署工作树。不要把它长期当成临时代码修改目录；`.env`、`.venv`、`.rag_index`、`output/`、运行中产生的风格记忆或样本文件必须放在忽略路径、部署目录外，或写入服务器本地 `.git/info/exclude`。
+
 标准更新路径：
 
 ```text
@@ -149,6 +151,9 @@ sudo systemctl restart weibo-ops-fastapi weibo-ops-streamlit hermes-gateway
 - 紧急 `scp` 覆盖可以用，但事后必须回到本机提交并让服务器对齐。
 - 部署拉取使用 `git pull --ff-only`；不能快进时先停下来查，不要 merge。
 - Windows 生成 patch 要显式 UTF-8，避免 PowerShell `>` 写成 UTF-16。
+- 服务器工作区大量 modified 时，先用 `git diff --name-only --ignore-cr-at-eol origin/main` 判断真实内容差异，避免被 CRLF/LF 换行噪声误导。
+- 大版本对齐优先使用影子目录：从 bundle 或远端检出到 `/opt/weibo-ops-next-<sha>`，复制必要运行态资源，跑定向测试和 health check，再停服务整体换名切换。
+- 切换后保留旧目录，例如 `/opt/weibo-ops-before-<sha>-<timestamp>`，确认稳定后再人工清理。
 
 ## Streamlit Community Cloud
 
