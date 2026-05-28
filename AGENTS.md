@@ -18,13 +18,14 @@ AI 负责提高选题、资料整理和草稿生产效率；人负责判断、�
 
 ## 权威文档
 
-最高优先级产品/技术总文档：
+当前 Agent 交接入口：
 
 ```text
-微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md
+AGENTS.md
+docs/agent_handbook/README.md
 ```
 
-同步整理版：
+历史完整方案 / 同步整理版：
 
 ```text
 docs/HotComment-AI技术方案.md
@@ -47,7 +48,7 @@ docs/agent_handbook/platform_video.md
 docs/agent_handbook/platform_wechat.md
 ```
 
-如果根目录总纲与其他文档冲突，以根目录总纲为准，再同步更新 docs 和本文件。
+如文档冲突，以 `AGENTS.md` 和 `docs/agent_handbook/` 的当前状态、工作流、架构和部署分卷为准；`docs/HotComment-AI技术方案.md` 作为历史完整方案参考。
 
 ## 当前状态摘要
 

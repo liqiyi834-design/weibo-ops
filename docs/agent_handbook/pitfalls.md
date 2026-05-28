@@ -108,25 +108,21 @@ MCP 暂时本地跑
 
 ## 文档同步
 
-用户可能更新根目录总纲。若出现新版本，先查找：
-
-```powershell
-Get-ChildItem -Path E:\work\lqy -Filter '*微博热点人格化锐评AI项目技术框架及实现路径*.md'
-```
-
-主文档应保留/更新为：
+当前交接入口是：
 
 ```text
-微博热点人格化锐评AI项目技术框架及实现路径_MCP自动化更新版.md
-```
-
-再同步：
-
-```text
-docs/HotComment-AI技术方案.md
 AGENTS.md
-docs/agent_handbook/*.md
+docs/README.md
+docs/agent_handbook/README.md
 ```
+
+`docs/HotComment-AI技术方案.md` 保留为历史完整方案 / 同步整理版，不再要求根目录保留旧总纲。
+
+同步原则：
+
+- 当前状态、工作流、架构、部署和踩坑写入 `docs/agent_handbook/` 对应分卷。
+- 早期人工运营素材归档在 `docs/legacy_ops/`，只作为知识源参考。
+- 如果历史方案、README 和 handbook 冲突，以 `AGENTS.md` 与 `docs/agent_handbook/` 当前分卷为准。
 
 ## 国内云服务器访问 GitHub 慢
 

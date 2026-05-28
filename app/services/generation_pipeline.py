@@ -73,11 +73,11 @@ class GenerationPipeline:
 
 def build_knowledge_loader(knowledge_dir: Path) -> KnowledgeLoader:
     extra_files = [
-        Path("04_人设与风格规则.md"),
-        Path("06_草稿生成提示词.md"),
-        Path("08_高热博文公开样本研究.md"),
-        Path("10_爆款博文写作公式.md"),
-        Path("12_事实核查与风险分级.md"),
-        Path("24_高互动正文分析标准.md"),
+        Path("docs/legacy_ops/04_人设与风格规则.md"),
+        Path("docs/legacy_ops/06_草稿生成提示词.md"),
+        Path("docs/legacy_ops/08_高热博文公开样本研究.md"),
+        Path("docs/legacy_ops/10_爆款博文写作公式.md"),
+        Path("docs/legacy_ops/12_事实核查与风险分级.md"),
+        Path("docs/legacy_ops/24_高互动正文分析标准.md"),
     ]
     return KnowledgeLoader(knowledge_dir, extra_files=extra_files)
