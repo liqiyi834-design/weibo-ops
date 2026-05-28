@@ -119,6 +119,7 @@ Hermes agents 定位为自动化编排层，只调用 MCP 或 FastAPI 完成候�
 ## 开发规则
 
 - git 提交信息使用中文。
+- 涉及业务代码、架构、接口、数据结构、测试策略等代码改动前，必须先与用户讨论实现路径、影响范围和验证方式；用户确认后再改代码。
 - 不在代码中硬编码 API key、Cookie、token 或私密账号信息。
 - API key、Cookie 只通过 `.env`、Streamlit secrets 或环境变量传入。
 - 真实模型调用必须通过 `app/llm` 抽象层。
