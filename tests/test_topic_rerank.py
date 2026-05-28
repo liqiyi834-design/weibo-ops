@@ -93,6 +93,23 @@ class CommercialHighScoreLLM(BaseLLMClient):
         }
 
 
+class LaunchPrHighScoreLLM(BaseLLMClient):
+    def generate_json(self, system_prompt: str, user_prompt: str) -> dict:
+        return {
+            "ranked": [
+                {
+                    "keyword": "某品牌新车上市售价公布",
+                    "final_score": 96,
+                    "decision": "select",
+                    "recommended_angle": "Compare price and positioning.",
+                    "reason": "Has public launch information and discussion space.",
+                    "needed_context": [],
+                    "risk_notes": [],
+                }
+            ]
+        }
+
+
 def test_topic_rerank_caps_commercial_promotion_even_when_llm_scores_high():
     candidate = TopicRerankCandidate(
         keyword="京东618明星红包上线",
@@ -117,6 +134,28 @@ def test_topic_rerank_caps_commercial_promotion_even_when_llm_scores_high():
     assert item.decision == "backup"
     assert any("核心信息缺失" in note for note in item.risk_notes)
     assert any("商业活动规则" in note for note in item.needed_context)
+
+
+def test_topic_rerank_lightly_caps_launch_pr_topics_even_when_llm_scores_high():
+    candidate = TopicRerankCandidate(
+        keyword="某品牌新车上市售价公布",
+        original_score=88,
+        category="brand_pr",
+        recommended_angle="比较售价和产品定位。",
+        research_sources=[
+            _source(domain="auto.example.com", credibility="medium").model_copy(
+                update={"summary": "新车正式上市，公布售价、配置和预订信息。"}
+            )
+        ],
+    )
+
+    response = TopicRerankService(LaunchPrHighScoreLLM()).rerank([candidate], max_results=1)
+
+    item = response.selected[0]
+    assert item.final_score <= 78
+    assert item.decision == "select"
+    assert any("新品发布类 PR" in note for note in item.risk_notes)
+    assert any("新品发布" in note for note in item.needed_context)
 
 
 def test_topic_rerank_api(monkeypatch):

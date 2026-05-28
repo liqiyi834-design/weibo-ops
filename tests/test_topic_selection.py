@@ -122,3 +122,19 @@ def test_topic_selection_downranks_commercial_promotion_label():
     assert commercial.score <= 65
     assert consumer_issue.score > commercial.score
     assert "商业推广标记强" in commercial.reason
+
+
+def test_topic_selection_lightly_downranks_launch_pr_topics():
+    topics = [
+        HotTopic(rank=1, keyword="某品牌新车上市售价公布", hot_value="1000000", source="test"),
+        HotTopic(rank=6, keyword="平台售后规则引发争议", hot_value="300000", source="test"),
+    ]
+
+    response = TopicSelectionService().select(topics, max_results=3)
+    by_keyword = {item.keyword: item for item in response.selected}
+
+    launch_pr = by_keyword["某品牌新车上市售价公布"]
+    consumer_issue = by_keyword["平台售后规则引发争议"]
+    assert launch_pr.score <= 78
+    assert consumer_issue.score > launch_pr.score
+    assert "新品发布类 PR" in launch_pr.reason

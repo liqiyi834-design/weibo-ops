@@ -114,6 +114,9 @@ class TopicSelectionService:
         elif commercial_signal == "implicit":
             score -= 18
             score = min(score, 70)
+        elif commercial_signal == "light":
+            score -= 8
+            score = min(score, 78)
 
         return min(100.0, max(score, 0))
 
@@ -194,6 +197,9 @@ class TopicSelectionService:
         ]
         if any(word in keyword for word in commercial_words) and any(word in keyword for word in brand_words):
             return "implicit"
+        launch_pr_words = ["上市", "新车", "发布", "售价", "价格", "亮相", "焕新", "预订"]
+        if any(word in keyword for word in launch_pr_words):
+            return "light"
         return None
 
     def _risk_level(self, category: str, keyword: str) -> str:
@@ -236,6 +242,8 @@ class TopicSelectionService:
             parts.append("商业推广标记强，默认降权并转为备选观察")
         elif commercial_signal == "implicit":
             parts.append("疑似大促/红包营销词条，需要先确认是否有真实公共议题")
+        elif commercial_signal == "light":
+            parts.append("疑似新品发布类 PR 词条，已轻量降权")
         if risk_level != "low":
             parts.append(f"风险等级为 {risk_level}，需要降温表达")
         return "；".join(parts) or "具备基础热度，可作为备选观察题。"

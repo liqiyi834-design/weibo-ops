@@ -138,14 +138,19 @@ class TopicRerankService:
         elif commercial_signal == "implicit":
             score -= 14
             score = min(score, 70)
-        if commercial_signal and core_context_missing:
+        elif commercial_signal == "light":
+            score -= 6
+            score = min(score, 78)
+        if commercial_signal in {"explicit", "implicit"} and core_context_missing:
             score -= 18
             score = min(score, 58)
 
         needed_context = []
-        if commercial_signal:
+        if commercial_signal in {"explicit", "implicit"}:
             needed_context.append("核验商业活动规则，避免替平台放大推广信息")
-        if commercial_signal and core_context_missing:
+        elif commercial_signal == "light":
+            needed_context.append("核验新品发布、售价或预订信息，避免替品牌放大 PR")
+        if commercial_signal in {"explicit", "implicit"} and core_context_missing:
             needed_context.append("热搜核心信息缺失，先补齐阵容、领取规则或叠加条件")
         if not sources:
             needed_context.append("补充公开背景来源")
@@ -154,7 +159,7 @@ class TopicRerankService:
 
         final_score = round(max(0, min(100, score)), 2)
         resolved_decision = decision or ("select" if final_score >= 70 else "backup" if final_score >= 50 else "reject")
-        if commercial_signal and core_context_missing and resolved_decision == "select":
+        if commercial_signal in {"explicit", "implicit"} and core_context_missing and resolved_decision == "select":
             resolved_decision = "backup"
         return RerankedTopic(
             keyword=candidate.keyword,
@@ -182,12 +187,17 @@ class TopicRerankService:
         if commercial_signal == "explicit":
             score = min(score - 24, 65)
             notes.append("商业推广标记强，已降权为备选观察")
-        else:
+            needed_context.append("核验商业活动规则，避免替平台放大推广信息")
+        elif commercial_signal == "implicit":
             score = min(score - 14, 70)
             notes.append("疑似大促/红包营销词条，已降权")
-        needed_context.append("核验商业活动规则，避免替平台放大推广信息")
+            needed_context.append("核验商业活动规则，避免替平台放大推广信息")
+        else:
+            score = min(score - 6, 78)
+            notes.append("疑似新品发布类 PR 词条，已轻量降权")
+            needed_context.append("核验新品发布、售价或预订信息，避免替品牌放大 PR")
 
-        if core_context_missing:
+        if commercial_signal in {"explicit", "implicit"} and core_context_missing:
             score = min(score - 18, 58)
             notes.append("商业词条核心信息缺失，不进入主推")
             needed_context.append("热搜核心信息缺失，先补齐阵容、领取规则或叠加条件")
@@ -247,6 +257,9 @@ class TopicRerankService:
             return "implicit"
         if candidate.category == "brand_pr" and any(word in candidate.keyword for word in commercial_words):
             return "implicit"
+        launch_pr_words = ["上市", "新车", "发布", "售价", "价格", "亮相", "焕新", "预订"]
+        if any(word in candidate.keyword for word in launch_pr_words):
+            return "light"
         return None
 
     def _core_context_missing(self, candidate: TopicRerankCandidate) -> bool:
