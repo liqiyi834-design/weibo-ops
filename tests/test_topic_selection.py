@@ -1,5 +1,48 @@
+from app.llm.client import BaseLLMClient
 from app.schemas.comment import HotTopic
 from app.services.topic_selection_service import TopicSelectionService
+
+
+class SelectionLLM(BaseLLMClient):
+    def generate_json(self, system_prompt: str, user_prompt: str) -> dict:
+        return {
+            "items": [
+                {
+                    "keyword": "topic b",
+                    "weibo_score": 94,
+                    "reason": "clearer public conflict and stronger comment space",
+                    "recommended_angle": "Discuss the rule cost for ordinary users.",
+                    "needed_context": ["verify latest public response"],
+                },
+                {
+                    "keyword": "topic a",
+                    "weibo_score": 52,
+                    "reason": "weak comment space",
+                    "recommended_angle": "Keep as backup.",
+                    "needed_context": [],
+                },
+            ]
+        }
+
+
+class BrokenSelectionLLM(BaseLLMClient):
+    def generate_json(self, system_prompt: str, user_prompt: str) -> dict:
+        return {"items": [{"keyword": "topic a", "weibo_score": "bad"}]}
+
+
+class CommercialSelectionLLM(BaseLLMClient):
+    def generate_json(self, system_prompt: str, user_prompt: str) -> dict:
+        return {
+            "items": [
+                {
+                    "keyword": "brand sale topic",
+                    "weibo_score": 98,
+                    "reason": "LLM likes the heat, but policy should cap it.",
+                    "recommended_angle": "Verify commercial rules first.",
+                    "needed_context": [],
+                }
+            ]
+        }
 
 
 def test_topic_selection_recommends_comment_worthy_topics():
@@ -25,6 +68,48 @@ def test_topic_selection_recommends_comment_worthy_topics():
     assert response.selected[0].recommended_targets
     assert all(0 <= item.score <= 100 for item in response.selected)
     assert "不要自动发布" in response.selected[0].avoid_points
+
+
+def test_topic_selection_uses_llm_scores_when_available():
+    topics = [
+        HotTopic(rank=1, keyword="topic a", hot_value="1000000", source="test"),
+        HotTopic(rank=20, keyword="topic b", hot_value="100000", source="test"),
+    ]
+
+    response = TopicSelectionService(llm=SelectionLLM()).select(topics, max_results=2)
+
+    assert response.selected[0].keyword == "topic b"
+    assert response.selected[0].score == 94
+    assert response.selected[0].llm_score == 94
+    assert response.selected[0].llm_scored is True
+    assert response.selected[0].base_score is not None
+    assert "LLM评分" in response.selected[0].reason
+    assert "verify latest public response" in response.selected[0].needed_context
+
+
+def test_topic_selection_falls_back_to_rules_when_llm_response_is_invalid():
+    topics = [
+        HotTopic(rank=1, keyword="topic a", hot_value="1000000", source="test"),
+        HotTopic(rank=2, keyword="topic b", hot_value="900000", source="test"),
+    ]
+
+    response = TopicSelectionService(llm=BrokenSelectionLLM()).select(topics, max_results=2)
+
+    assert all(item.llm_scored is False for item in response.selected)
+    assert all(item.llm_score is None for item in response.selected)
+    assert any("回退规则分" in note for note in response.notes)
+
+
+def test_topic_selection_caps_commercial_topic_even_with_high_llm_score():
+    topics = [
+        HotTopic(rank=1, keyword="brand sale topic", hot_value="1000000", label="ad", source="test"),
+    ]
+
+    response = TopicSelectionService(llm=CommercialSelectionLLM()).select(topics, max_results=3)
+
+    assert response.selected[0].llm_scored is True
+    assert response.selected[0].score <= 65
+    assert response.selected[0].llm_score <= 65
 
 
 def test_topic_selection_scores_zhihu_fit_separately():

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
-from app.llm.client import build_llm_client
+from app.llm.client import build_llm_client, build_real_llm_client
 from app.schemas.comment import RetrievedKnowledge
 from app.schemas.comment import CandidatePool, CandidatePoolCreateRequest, CandidatePoolSummary
 from app.schemas.comment import CandidateStatusUpdateRequest
@@ -152,7 +152,8 @@ def select_comment_topics(request: TopicSelectionRequest) -> TopicSelectionRespo
             else topic
             for index, topic in enumerate(topics)
         ]
-    return TopicSelectionService().select(topics, max_results=request.max_results)
+    llm = build_real_llm_client(settings)
+    return TopicSelectionService(llm=llm).select(topics, max_results=request.max_results)
 
 
 @router.post("/api/topic-candidates/pools", response_model=CandidatePool)
@@ -163,7 +164,7 @@ def create_candidate_pool(request: CandidatePoolCreateRequest) -> CandidatePool:
     source = selection.source
     if request.use_exa_rerank:
         settings = get_settings()
-        llm = build_llm_client(settings)
+        llm = build_real_llm_client(settings)
         selected, rerank_notes = CandidatePoolRerankService(settings, llm).rerank_selected(
             selected=selection.selected,
             max_results=request.max_results,
@@ -469,7 +470,7 @@ def research_weibo_aisearch(request: WeiboAiSearchResearchRequest) -> TopicResea
 @router.post("/api/topics/rerank", response_model=TopicRerankResponse)
 def rerank_topics_with_research(request: TopicRerankRequest) -> TopicRerankResponse:
     settings = get_settings()
-    llm = build_llm_client(settings)
+    llm = build_real_llm_client(settings)
     return TopicRerankService(llm).rerank(
         candidates=request.candidates,
         max_results=request.max_results,

@@ -3,27 +3,46 @@ from __future__ import annotations
 import re
 
 from app.hot_sources.base import HotSearchItem
+from app.llm.client import BaseLLMClient
 from app.schemas.comment import FactSummary, HotTopic, SelectedTopic, TopicSelectionResponse
 from app.services.topic_classifier import TopicClassifier
+from app.services.topic_llm_scoring_service import TopicLLMScoringService, TopicLLMScore
 from app.services.zhihu_topic_fit_service import ZhihuTopicFitService
 
 
 class TopicSelectionService:
-    def __init__(self):
+    def __init__(self, llm: BaseLLMClient | None = None):
         self.classifier = TopicClassifier()
         self.zhihu_fit = ZhihuTopicFitService()
+        self.llm_scorer = TopicLLMScoringService(llm) if llm else None
 
-    def select(self, topics: list[HotTopic | HotSearchItem], max_results: int = 5) -> TopicSelectionResponse:
+    def select(
+        self,
+        topics: list[HotTopic | HotSearchItem],
+        max_results: int = 5,
+        account_id: str = "today_direct",
+    ) -> TopicSelectionResponse:
         evaluated = [self._evaluate(topic) for topic in topics if topic.keyword.strip()]
+        notes = [
+            "推荐结果只用于选题决策，最终选题由人工确认。",
+            "风险边界和商业推广封顶规则作为安全约束，最终选题由人工确认。",
+        ]
+        if self.llm_scorer:
+            try:
+                llm_scores = self.llm_scorer.score(evaluated, max_results=max_results, account_id=account_id)
+            except ValueError as exc:
+                notes.append(f"LLM 选题评分不可用，已回退规则分：{exc}")
+            else:
+                evaluated = [self._apply_llm_score(item, llm_scores[item.keyword]) for item in evaluated]
+                notes.append("LLM 选题评分已应用，规则分作为基线和安全封顶。")
+        else:
+            notes.append("未配置真实 LLM，使用规则评分。")
         selected = sorted(evaluated, key=lambda item: item.score, reverse=True)[:max_results]
         return TopicSelectionResponse(
             source=self._source_name(topics),
             evaluated_count=len(evaluated),
             selected=selected,
-            notes=[
-                "推荐结果只用于选题决策，最终选题由人工确认。",
-                "风险不参与评分，只作为单独提示和表达边界。",
-            ],
+            notes=notes,
         )
 
     def _evaluate(self, topic: HotTopic | HotSearchItem) -> SelectedTopic:
@@ -39,6 +58,7 @@ class TopicSelectionService:
             original_rank=getattr(topic, "original_rank", None) or topic.rank,
             keyword=topic.keyword,
             score=round(score, 2),
+            base_score=round(score, 2),
             category=classification.category,
             risk_level=risk_level,
             reason=reason,
@@ -67,6 +87,44 @@ class TopicSelectionService:
             zhihu_recommended_domain=zhihu_fit.recommended_domain,
             zhihu_domain_reason=zhihu_fit.domain_reason,
         )
+
+    def _apply_llm_score(self, item: SelectedTopic, llm_score: TopicLLMScore) -> SelectedTopic:
+        final_score = self._apply_score_caps(llm_score.score, item)
+        target_scores = dict(item.target_platform_scores)
+        target_scores["weibo"] = final_score
+        base_score = item.base_score if item.base_score is not None else item.score
+        reason_parts = []
+        if llm_score.reason:
+            reason_parts.append(f"LLM评分：{llm_score.reason}")
+        if item.reason:
+            reason_parts.append(f"规则基线：{item.reason}")
+        return item.model_copy(
+            update={
+                "score": final_score,
+                "base_score": base_score,
+                "llm_score": final_score,
+                "llm_scored": True,
+                "reason": "\n".join(reason_parts) or item.reason,
+                "recommended_angle": llm_score.recommended_angle or item.recommended_angle,
+                "needed_context": _dedupe([*item.needed_context, *llm_score.needed_context]),
+                "target_platform_scores": target_scores,
+                "recommended_targets": self._recommended_targets(
+                    final_score,
+                    item.target_platform_scores.get("zhihu", 0),
+                    item.risk_level,
+                ),
+            }
+        )
+
+    def _apply_score_caps(self, score: float, item: SelectedTopic) -> float:
+        signal = self._commercial_promotion_signal(item.keyword, item)
+        if signal == "explicit":
+            score = min(score, 65)
+        elif signal == "implicit":
+            score = min(score, 70)
+        elif signal == "light":
+            score = min(score, 78)
+        return round(max(0, min(100, score)), 2)
 
     def _recommended_targets(self, weibo_score: float, zhihu_score: float, risk_level: str) -> list[str]:
         targets = []
@@ -314,3 +372,14 @@ class TopicSelectionService:
         if len(sources) == 1:
             return next(iter(sources))
         return "mixed" if sources else "manual"
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value).strip()
+        if text and text not in seen:
+            seen.add(text)
+            result.append(text)
+    return result

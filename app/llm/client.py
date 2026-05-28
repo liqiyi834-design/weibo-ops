@@ -124,6 +124,28 @@ class MockLLMClient(BaseLLMClient):
                     }
                 ]
             }
+        if "topicselectionscoringschema" in lowered:
+            candidates = _extract_json_after_marker(user_prompt, "Candidates:")
+            items = []
+            if isinstance(candidates, list):
+                for candidate in candidates:
+                    if not isinstance(candidate, dict):
+                        continue
+                    base_score = candidate.get("base_score") or 70
+                    try:
+                        score = min(95, float(base_score) + 3)
+                    except (TypeError, ValueError):
+                        score = 70
+                    items.append(
+                        {
+                            "keyword": candidate.get("keyword"),
+                            "weibo_score": score,
+                            "reason": "Mock LLM scoring for tests.",
+                            "recommended_angle": candidate.get("recommended_angle") or "Use verified context.",
+                            "needed_context": [],
+                        }
+                    )
+            return {"items": items}
         if "stylememoryschema" in lowered:
             return {
                 "hook_patterns": ["先抛判断，再补事实边界"],
@@ -150,3 +172,19 @@ def build_llm_client(settings: Settings) -> BaseLLMClient:
     if settings.openai_api_key:
         return OpenAICompatibleLLMClient(settings)
     return MockLLMClient()
+
+
+def build_real_llm_client(settings: Settings) -> BaseLLMClient | None:
+    if not settings.openai_api_key:
+        return None
+    return OpenAICompatibleLLMClient(settings)
+
+
+def _extract_json_after_marker(text: str, marker: str) -> Any:
+    if marker not in text:
+        return None
+    raw = text.split(marker, 1)[1].strip()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None

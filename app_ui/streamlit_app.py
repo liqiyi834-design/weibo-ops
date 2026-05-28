@@ -35,7 +35,7 @@ from app.services.topic_research_service import TopicResearchService
 from app.services.topic_asset_service import TopicAssetService
 from app.services.topic_selection_service import TopicSelectionService
 from app.services.weibo_aisearch_research_service import WeiboAiSearchResearchService
-from app.llm.client import build_llm_client
+from app.llm.client import build_llm_client, build_real_llm_client
 from app.schemas.comment import GenerateCommentRequest
 from app.schemas.comment import GenerateZhihuAnswerRequest
 from app.schemas.feedback import DraftFeedbackRequest
@@ -209,7 +209,7 @@ class LocalServiceClient:
                 topic.sampled_posts_count = metrics.sampled_posts_count
                 topic.controversy_score = metrics.controversy_score
 
-        selection = TopicSelectionService().select(
+        selection = TopicSelectionService(llm=build_real_llm_client(self.settings)).select(
             topics,
             max_results=payload.get("max_results", 10),
         )
@@ -217,7 +217,7 @@ class LocalServiceClient:
         notes = list(selection.notes)
         source = selection.source
         if payload.get("use_exa_rerank", False):
-            llm = build_llm_client(self.settings)
+            llm = build_real_llm_client(self.settings)
             selected, rerank_notes = CandidatePoolRerankService(self.settings, llm).rerank_selected(
                 selected=selection.selected,
                 max_results=payload.get("max_results", 10),

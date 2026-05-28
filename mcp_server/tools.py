@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core.config import Settings, get_settings
-from app.llm.client import BaseLLMClient, build_llm_client
+from app.llm.client import BaseLLMClient, build_llm_client, build_real_llm_client
 from app.schemas.comment import (
     CommentOutput,
     DraftUpdateRequest,
@@ -404,7 +404,7 @@ def rerank_topics_with_research_tool(
     llm: BaseLLMClient | None = None,
 ) -> dict:
     active_settings = settings or get_settings()
-    active_llm = llm or build_llm_client(active_settings)
+    active_llm = llm or build_real_llm_client(active_settings)
     parsed = [TopicRerankCandidate(**candidate) for candidate in candidates]
     response = TopicRerankService(active_llm).rerank(
         candidates=parsed,
@@ -558,7 +558,8 @@ def select_comment_topics_tool(
             topic.discussion_count = metrics.discussion_count
             topic.sampled_posts_count = metrics.sampled_posts_count
             topic.controversy_score = metrics.controversy_score
-    result = TopicSelectionService().select(hot_topics, max_results=max_results)
+    active_llm = build_real_llm_client(active_settings)
+    result = TopicSelectionService(active_llm).select(hot_topics, max_results=max_results)
     return result.model_dump()
 
 

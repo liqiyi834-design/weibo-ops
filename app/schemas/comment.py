@@ -337,6 +337,9 @@ class SelectedTopic(BaseModel):
     original_rank: int | None = None
     keyword: str
     score: float
+    base_score: float | None = None
+    llm_score: float | None = None
+    llm_scored: bool = False
     category: str
     risk_level: Literal["low", "medium", "high"] = "low"
     reason: str

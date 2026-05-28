@@ -4,12 +4,42 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 import app.api.routes as routes
+from app.core.config import Settings
 from app.main import app
-from app.llm.client import MockLLMClient
+from app.llm.client import BaseLLMClient, MockLLMClient
 from app.services.candidate_pool_service import CandidatePoolService
 from app.services.draft_feedback_service import DraftFeedbackService
 from app.services.draft_service import DraftService
 from app.services.topic_asset_service import TopicAssetService
+
+
+class ApiSelectionLLM(BaseLLMClient):
+    def generate_json(self, system_prompt: str, user_prompt: str) -> dict:
+        return {
+            "items": [
+                {
+                    "keyword": "api topic b",
+                    "weibo_score": 93,
+                    "reason": "better API topic",
+                    "recommended_angle": "Use API LLM angle.",
+                    "needed_context": [],
+                },
+                {
+                    "keyword": "api topic a",
+                    "weibo_score": 51,
+                    "reason": "weaker API topic",
+                    "recommended_angle": "Keep backup.",
+                    "needed_context": [],
+                },
+                {
+                    "keyword": "api topic c",
+                    "weibo_score": 45,
+                    "reason": "weakest API topic",
+                    "recommended_angle": "Skip.",
+                    "needed_context": [],
+                },
+            ]
+        }
 
 
 def test_health():
@@ -113,6 +143,31 @@ def test_select_comment_topics():
     assert 1 <= len(body["selected"]) <= 3
     assert body["selected"][0]["reason"]
     assert body["selected"][0]["recommended_angle"]
+
+
+def test_select_comment_topics_uses_real_llm_when_configured(monkeypatch):
+    settings = Settings(OPENAI_API_KEY="x", KNOWLEDGE_DIR=Path("app/knowledge"))
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+    monkeypatch.setattr(routes, "build_real_llm_client", lambda active_settings: ApiSelectionLLM())
+    client = TestClient(app)
+    response = client.post(
+        "/api/topics/select",
+        json={
+            "max_results": 3,
+            "enrich_metrics": False,
+            "topics": [
+                {"rank": 1, "keyword": "api topic a", "hot_value": "1000000"},
+                {"rank": 2, "keyword": "api topic b", "hot_value": "900000"},
+                {"rank": 3, "keyword": "api topic c", "hot_value": "800000"},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["selected"][0]["keyword"] == "api topic b"
+    assert body["selected"][0]["llm_scored"] is True
+    assert body["selected"][0]["llm_score"] == 93
 
 
 def test_styles_and_accounts_endpoints():

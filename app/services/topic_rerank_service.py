@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 
-from app.llm.client import BaseLLMClient, LLMClientError
+from app.llm.client import BaseLLMClient
 from app.schemas.comment import RerankedTopic, TopicRerankCandidate, TopicRerankResponse
 from app.services.style_service import StyleService
 
@@ -89,9 +89,11 @@ class TopicRerankService:
         )
         try:
             payload = self.llm.generate_json(system_prompt, user_prompt)
-        except LLMClientError:
+        except Exception:
             return []
 
+        if not isinstance(payload, dict):
+            return []
         raw_items = payload.get("ranked") or payload.get("selected") or []
         if not isinstance(raw_items, list):
             return []

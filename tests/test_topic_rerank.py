@@ -179,6 +179,7 @@ def test_topic_rerank_api(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["selected"]
+    assert response.json()["llm_used"] is False
 
 
 def test_mcp_rerank_topics_with_research_tool():
