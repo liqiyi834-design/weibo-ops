@@ -144,6 +144,18 @@ sudo systemctl restart weibo-ops-fastapi weibo-ops-streamlit hermes-gateway
 -> 不在服务器制造新 commit
 ```
 
+如果服务器本地代理可用，部署前先测试直连和代理两条链路：
+
+```bash
+curl -I --max-time 20 https://github.com
+curl -x http://127.0.0.1:7890 -I --max-time 20 https://github.com
+git ls-remote --heads https://github.com/liqiyi834-design/weibo-ops.git main
+env https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 \
+  git ls-remote --heads https://github.com/liqiyi834-design/weibo-ops.git main
+```
+
+只要 `git ls-remote` 能稳定返回目标 SHA，优先用服务器 `git pull --ff-only`。如果直连失败但代理成功，再给单次 Git 命令加 `http_proxy/https_proxy`。如果两者都不稳，回退到本机 bundle/scp。
+
 硬规则：
 
 - 不在服务器随手 `git commit` / `git am`，除非明确准备把该提交推回主仓库。

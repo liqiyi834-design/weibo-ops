@@ -153,6 +153,25 @@ curl raw.githubusercontent.com 安装脚本长时间卡住
 
 这个经验适用于 mihomo/Clash、Hermes 发行包、浏览器自动化二进制、CLI 工具和其他 GitHub release 资产。
 
+### GitHub 连通性先测再决定同步方式
+
+如果服务器已启用本地代理，先不要假设 GitHub 一定慢。部署前分别测试直连和代理：
+
+```bash
+curl -I --max-time 20 https://github.com
+curl -x http://127.0.0.1:7890 -I --max-time 20 https://github.com
+git ls-remote --heads https://github.com/liqiyi834-design/weibo-ops.git main
+env https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 \
+  git ls-remote --heads https://github.com/liqiyi834-design/weibo-ops.git main
+```
+
+判断：
+
+- `git ls-remote` 能返回目标 SHA：优先走服务器 `git pull --ff-only`。
+- 直连失败但代理成功：给单次 Git 命令加 `http_proxy/https_proxy`，不要把代理密钥或订阅写入项目文档。
+- 两者都失败或超时：回退到本机 `git bundle` / `scp`。
+- GitHub 首页和 `git ls-remote` 能连，不代表 release 大文件稳定；大文件下载仍按速度和超时情况决定是否本机下载后上传。
+
 ## 服务器部署目录不要混成第二个开发源
 
 现象：
